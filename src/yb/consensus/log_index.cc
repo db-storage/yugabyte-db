@@ -200,7 +200,7 @@ Status LogIndex::OpenChunk(int64_t chunk_idx, scoped_refptr<IndexChunk>* chunk) 
   chunk->swap(new_chunk);
   return Status::OK();
 }
-
+//DHQ: 对于我们把不同raft group的log放在同一文件的场合，raft的log id，已经不是log file内部的id。更需要一个索引了。
 Status LogIndex::GetChunkForIndex(int64_t log_index, bool create,
                                   scoped_refptr<IndexChunk>* chunk) {
   CHECK_GT(log_index, 0);

@@ -112,7 +112,7 @@ enum ConsensusConfigType {
 }
 
 // A set of peers, serving a single tablet.
-message RaftConfigPB {
+message RaftConfigPB {//DHQ: 包含一个opid_index，因为conf change也是走raft流程
   // The index of the operation which serialized this RaftConfigPB through
   // consensus. It is set when the operation is consensus-committed (replicated
   // to a majority of voters) and before the consensus metadata is updated.

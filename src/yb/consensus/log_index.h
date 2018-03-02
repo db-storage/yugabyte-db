@@ -60,7 +60,7 @@ struct LogIndexEntry {
 
   std::string ToString() const;
 };
-
+//DHQ: 这里说了，index是mmap的IO，虽然on-disk，但不是durable的。应该是指reboot后丢失。可是重启后，就不需要LogIndex了？
 // An on-disk structure which indexes from OpId index to the specific position in the WAL
 // which contains the latest ReplicateMsg for that index.
 //
@@ -109,7 +109,7 @@ class LogIndex : public RefCountedThreadSafe<LogIndex> {
   std::string GetChunkPath(int64_t chunk_idx);
 
   // The base directory where index files are located.
-  const std::string base_dir_;
+  const std::string base_dir_; //DHQ: 还有个路径，专门放log index files
 
   simple_spinlock open_chunks_lock_;
 
