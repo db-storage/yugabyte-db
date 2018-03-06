@@ -469,11 +469,11 @@ Status FsManager::ListTabletIds(vector<string>* tablet_ids) {
 
 std::string FsManager::GetInstanceMetadataPath(const string& root) const {
   return JoinPathSegments(GetServerTypeDataPath(root, server_type_), kInstanceMetadataFileName);
-}
+}//DHQ: 封装了获取instance信息的API
 
 std::string FsManager::GetConsensusMetadataDir() const {
   DCHECK(initted_);
-  return JoinPathSegments(
+  return JoinPathSegments(//DHQ: ConsensusMeta 有啥？ HardState等?
       GetServerTypeDataPath(canonicalized_metadata_fs_root_, server_type_),
       kConsensusMetadataDirName);
 }
@@ -495,7 +495,7 @@ std::string FsManager::GetWalSegmentFileName(const string& tablet_wal_path,
   return JoinPathSegments(tablet_wal_path,
                           strings::Substitute("$0-$1",
                                               kWalFileNamePrefix,
-                                              StringPrintf("%09" PRIu64, sequence_number)));
+                                              StringPrintf("%09" PRIu64, sequence_number)));//DHQ: 在目录下，每个log 文件名为 prefix+sequence_number。即然文件名带了seq，那么肯定更seqsegment对应了。
 }
 
 // ==========================================================================

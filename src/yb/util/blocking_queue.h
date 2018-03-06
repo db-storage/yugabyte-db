@@ -120,7 +120,7 @@ class BlockingQueue {
   bool BlockingDrainTo(std::vector<T>* out) {
     return BlockingDrainTo(out, MonoTime::kMax);
   }
-
+//DHQ: list_里面的，都draint到out里面
   bool BlockingDrainTo(std::vector<T>* out, const MonoTime& wait_timeout_deadline) {
     MutexLock l(lock_);
     while (true) {
@@ -198,7 +198,7 @@ class BlockingQueue {
   bool BlockingPut(gscoped_ptr<T_VAL>* val) {
     bool ret = Put(val->get());
     if (ret) {
-      ignore_result(val->release());
+      ignore_result(val->release()); //DHQ: 成功，即把data插入到了queue，原来的val，就不再指向实际的data区了; unique_ptr没有这种release功能。
     }
     return ret;
   }

@@ -49,7 +49,7 @@ enum LogEntryTypePB {
   REPLICATE = 1;
   // Marker entry for dummy log messages. These will never end up in the log, just serve the purpose
   // of making sure that all entries up to the FLUSH_MARKER entry are flushed.
-  FLUSH_MARKER = 999;
+  FLUSH_MARKER = 999; //DHQ: 这个是用于检查前面的都flush成功的。不是个实际消息
 };
 
 // An entry in the WAL/state machine log.

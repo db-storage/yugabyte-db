@@ -271,7 +271,7 @@ void LogReader::GetMaxIndexesToSegmentSizeMap(int64_t min_op_idx, int32_t segmen
     (*max_idx_to_segment_size)[segment->footer().max_replicate_index()] = segment->file_size();
   }
 }
-
+//DHQ: SequenceNumber 是上层传递的，不是kv层的内容。一个segment内部，sequence是相同的。
 scoped_refptr<ReadableLogSegment> LogReader::GetSegmentBySequenceNumber(int64_t seq) const {
   std::lock_guard<simple_spinlock> lock(lock_);
   if (segments_.empty()) {
@@ -280,7 +280,7 @@ scoped_refptr<ReadableLogSegment> LogReader::GetSegmentBySequenceNumber(int64_t 
 
   // We always have a contiguous set of log segments, so we can find the requested
   // segment in our vector by calculating its offset vs the first element.
-  int64_t first_seqno = segments_[0]->header().sequence_number();
+  int64_t first_seqno = segments_[0]->header().sequence_number(); //DHQ: 每个segment，一个sequence number，并且递增？ 否则这个relative没法成立
   int64_t relative = seq - first_seqno;
   if (relative < 0 || relative >= segments_.size()) {
     return nullptr;

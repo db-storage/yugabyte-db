@@ -41,7 +41,7 @@ namespace yb {
 namespace consensus {
 
 typedef std::shared_ptr<ReplicateMsg> ReplicateMsgPtr;
-typedef std::vector<ReplicateMsgPtr> ReplicateMsgs;
+typedef std::vector<ReplicateMsgPtr> ReplicateMsgs; //DHQ: 这个里面都是shared_ptr，log对象和用户程序，可能都持有entry/Msg的指针
 
 } // namespace consensus
 } // namespace yb

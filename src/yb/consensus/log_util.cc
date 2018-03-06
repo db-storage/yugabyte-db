@@ -812,9 +812,9 @@ void CreateBatchFromAllocatedOperations(const ReplicateMsgs& msgs,
   for (const auto& msg : msgs) {
     LogEntryPB* entry_pb = entry_batch.add_entry();
     entry_pb->set_type(log::REPLICATE);
-    entry_pb->set_allocated_replicate(msg.get());
+    entry_pb->set_allocated_replicate(msg.get());//DHQ: 这里没有copy，而是 set_allocated。做了shared_ptr的get，获取数据指针. 但是pb里面不是shared_ptr,并没有增加引用计数。
   }
-  batch->Swap(&entry_batch);
+  batch->Swap(&entry_batch); //DHQ: Swap content with another message. PB的函数
 }
 
 bool IsLogFileName(const string& fname) {

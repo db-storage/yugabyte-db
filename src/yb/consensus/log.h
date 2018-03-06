@@ -84,7 +84,7 @@ typedef BlockingQueue<LogEntryBatch*, LogEntryBatchLogicalSize> LogEntryBatchQue
 // AsyncAppend(). Reserve() reserves a slot on a queue for the log entry; AsyncAppend() indicates
 // that the entry in the slot is safe to write to disk and adds a callback that will be invoked once
 // the entry is written and synchronized to disk.
-//
+//DHQ: 看来先搞个Reserver，是为了减少持有锁的时间。 是不是在Reserve时，并没有准备好数据，只是占有vector上的位置，然后再搞定数据？
 // For sample usage see mt-log-test.cc
 //
 // Methods on this class are _not_ thread-safe and must be externally synchronized unless otherwise
@@ -553,7 +553,7 @@ class LogEntryBatch {
 };
 
 // Used by 'Log::queue_' to determine logical size of a LogEntryBatch.
-struct LogEntryBatchLogicalSize {
+struct LogEntryBatchLogicalSize {//DHQ: logical size, user data size
   static size_t logical_size(const LogEntryBatch* batch) {
     return batch->total_size_bytes();
   }

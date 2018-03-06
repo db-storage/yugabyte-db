@@ -69,7 +69,7 @@
 
 using namespace yb::size_literals;
 using namespace std::literals;
-
+//DHQ: gflags是google提供的用于注册命令行参数选项的api，便于根据需要注册自己的配置项
 // Log retention configuration.
 // -----------------------------
 DEFINE_int32(log_min_segments_to_retain, 2,
@@ -138,9 +138,9 @@ using std::shared_ptr;
 using strings::Substitute;
 
 // This class is responsible for managing the thread that appends to the log file.
-class Log::AppendThread {
+class Log::AppendThread {//DHQ: 没有在头文件中定义class，不希望被其他看到？
  public:
-  explicit AppendThread(Log* log);
+  explicit AppendThread(Log* log);//DHQ: 不允许出现copy/implicit方式的construct，所以必须调用constructor
 
   // Initializes the objects and starts the thread.
   Status Init();
@@ -181,7 +181,7 @@ void Log::AppendThread::RunThread() {
     ElementDeleter d(&entry_batches);
 
     MonoTime wait_timeout_deadline = MonoTime::kMax;
-    if ((log_->interval_durable_wal_write_)
+    if ((log_->interval_durable_wal_write_)//DHQ: 两次写之间的间隔，因为每个Tablet分别有log，可以做了等待
         && log_->periodic_sync_needed_.load()) {
       wait_timeout_deadline = log_->periodic_sync_earliest_unsync_entry_time_
           + log_->interval_durable_wal_write_;
@@ -193,7 +193,7 @@ void Log::AppendThread::RunThread() {
     // batches before exiting the main RunThread() loop.
     if (PREDICT_FALSE(!log_->entry_queue()->BlockingDrainTo(&entry_batches,
                                                             wait_timeout_deadline))) {
-      shutting_down = true;
+      shutting_down = true;//DHQ: BlockingDrainTo,获取entry batches
     }
 
     auto sleep_duration = log_->sleep_duration_.load(std::memory_order_acquire);
@@ -206,11 +206,11 @@ void Log::AppendThread::RunThread() {
     }
     TRACE_EVENT1("log", "batch", "batch_size", entry_batches.size());
 
-    SCOPED_LATENCY_METRIC(log_->metrics_, group_commit_latency);
+    SCOPED_LATENCY_METRIC(log_->metrics_, group_commit_latency);//DHQ: SCOPED，应为到函数结束
 
-    for (LogEntryBatch* entry_batch : entry_batches) {
+    for (LogEntryBatch* entry_batch : entry_batches) {//DHQ: 每个batch分别append，DoAppend会为每个batch会产生crc
       TRACE_EVENT_FLOW_END0("log", "Batch", entry_batch);
-      Status s = log_->DoAppend(entry_batch);
+      Status s = log_->DoAppend(entry_batch); //DHQ: 这么多次append，只有后面一次Sync，到底哪些能成功？会不会乱序？
 
       if (PREDICT_FALSE(!s.ok())) {
         LOG(ERROR) << "Error appending to the log: " << s.ToString();
@@ -382,8 +382,8 @@ Status Log::Init() {
 Status Log::AsyncAllocateSegment() {
   std::lock_guard<boost::shared_mutex> lock_guard(allocation_lock_);
   CHECK_EQ(allocation_state_, kAllocationNotStarted);
-  allocation_status_.Reset();
-  allocation_state_ = kAllocationInProgress;
+  allocation_status_.Reset(); //DHQ: 在执行AsyncAllocateSegment时，reset一次。
+  allocation_state_ = kAllocationInProgress;//DHQ: SegmentAllocationTask会调用Set。其他地方调用Get等待结果。这个跟go的chan比较接近了
   return allocation_pool_->SubmitClosure(Bind(&Log::SegmentAllocationTask, Unretained(this)));
 }
 
@@ -403,9 +403,9 @@ Status Log::RollOver() {
   SCOPED_LATENCY_METRIC(metrics_, roll_latency);
 
   // Check if any errors have occurred during allocation
-  RETURN_NOT_OK(allocation_status_.Get());
+  RETURN_NOT_OK(allocation_status_.Get());//DHQ: allocation_status_是个Promise，这个Get，应该是有等待的。
 
-  DCHECK_EQ(allocation_state(), kAllocationFinished);
+  DCHECK_EQ(allocation_state(), kAllocationFinished);//DHQ: 上面是等待操作完成，这里等待结果
 
   RETURN_NOT_OK(Sync());
   RETURN_NOT_OK(CloseCurrentSegment());
@@ -415,10 +415,10 @@ Status Log::RollOver() {
   LOG(INFO) << "Rolled over to a new segment: " << active_segment_->path();
   return Status::OK();
 }
-
+//DHQ: 参见log.h对Reserver的注释。
 Status Log::Reserve(LogEntryTypePB type,
                     LogEntryBatchPB* entry_batch,
-                    LogEntryBatch** reserved_entry) {
+                    LogEntryBatch** reserved_entry) { //DHQ: reserved_entry是用于获取返回值的
   TRACE_EVENT0("log", "Log::Reserve");
   DCHECK(reserved_entry != nullptr);
   {
@@ -436,14 +436,14 @@ Status Log::Reserve(LogEntryTypePB type,
 
   int num_ops = entry_batch->entry_size();
   gscoped_ptr<LogEntryBatch> new_entry_batch(new LogEntryBatch(type, entry_batch, num_ops));
-  new_entry_batch->MarkReserved();
+  new_entry_batch->MarkReserved(); //DHQ: 整个batch的状态
 
   // Release the memory back to the caller: this will be freed when
   // the entry is removed from the queue.
   //
   // TODO (perf) Use a ring buffer instead of a blocking queue and set
   // 'reserved_entry' to a pre-allocated slot in the buffer.
-  *reserved_entry = new_entry_batch.release();
+  *reserved_entry = new_entry_batch.release();//DHQ: release返回了实际指针，相当于move了
   return Status::OK();
 }
 
@@ -455,7 +455,7 @@ Status Log::AsyncAppend(LogEntryBatch* entry_batch, const StatusCallback& callba
 
   entry_batch->set_callback(callback);
   entry_batch->MarkReady();
-
+  //DHQ: 对于Queue来说，batch是一个item
   if (PREDICT_FALSE(!entry_batch_queue_.BlockingPut(entry_batch))) {
     delete entry_batch;
     return kLogShutdownStatus;
@@ -474,14 +474,14 @@ Status Log::AsyncAppendReplicates(const ReplicateMsgs& msgs,
   // If we're able to reserve set the vector of replicate scoped ptrs in
   // the LogEntryBatch. This will make sure there's a reference for each
   // replicate while we're appending.
-  reserved_entry_batch->SetReplicates(msgs);
-
+  reserved_entry_batch->SetReplicates(msgs); //CreateBatchFromAllocatedOperations里面使用了shared_ptr的raw ptr，这里增加各个shared_ptr的引用，防止被释放了。
+  //DHQ: AsyncAppend内部调用的BlockingPut，可能阻塞，不能总持有lock，所以先Reserver，后面就放锁了。
   RETURN_NOT_OK(AsyncAppend(reserved_entry_batch, callback));
   return Status::OK();
 }
 
 Status Log::DoAppend(LogEntryBatch* entry_batch, bool caller_owns_operation) {
-  RETURN_NOT_OK(entry_batch->Serialize());
+  RETURN_NOT_OK(entry_batch->Serialize()); //DHQ: 写到segment的buffer
   size_t num_entries = entry_batch->count();
   DCHECK_GT(num_entries, 0) << "Cannot call DoAppend() with zero entries reserved";
 
@@ -499,8 +499,8 @@ Status Log::DoAppend(LogEntryBatch* entry_batch, bool caller_owns_operation) {
                 << "Starting new segment allocation. ";
       RETURN_NOT_OK(AsyncAllocateSegment());
       if (!options_.async_preallocate_segments) {
-        LOG_SLOW_EXECUTION(WARNING, 50, "Log roll took a long time") {
-          RETURN_NOT_OK(RollOver());
+        LOG_SLOW_EXECUTION(WARNING, 50, "Log roll took a long time") {//DHQ: LOG_SLOW_EXECUTION是评价大括号内的执行时间，并在过长时打印log
+          RETURN_NOT_OK(RollOver()); //DHQ: 计算RollOver()的时间
         }
       }
     }
@@ -518,7 +518,7 @@ Status Log::DoAppend(LogEntryBatch* entry_batch, bool caller_owns_operation) {
     SCOPED_LATENCY_METRIC(metrics_, append_latency);
     SCOPED_WATCH_STACK(500);
 
-    RETURN_NOT_OK(active_segment_->WriteEntryBatch(entry_batch_data));
+    RETURN_NOT_OK(active_segment_->WriteEntryBatch(entry_batch_data));//DHQ: 这个里面真的去append file.注意调用的是active_segment_的函数。只写一个segment
 
     // We keep track of the last-written OpId here. This is needed to initialize Consensus on
     // startup.
@@ -945,7 +945,7 @@ Status Log::SwitchToAllocatedSegment() {
   active_segment_sequence_number_++;
 
   const string new_segment_path =
-      fs_manager_->GetWalSegmentFileName(tablet_wal_path_, active_segment_sequence_number_);
+      fs_manager_->GetWalSegmentFileName(tablet_wal_path_, active_segment_sequence_number_);//DHQ: 看了segment是新文件
 
   RETURN_NOT_OK(fs_manager_->env()->RenameFile(next_segment_path_, new_segment_path));
   if (durable_wal_write_) {

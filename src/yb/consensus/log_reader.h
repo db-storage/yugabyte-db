@@ -82,11 +82,11 @@ class LogReader {
   // Returns the biggest prefix of segments, from the current sequence, guaranteed
   // not to include any replicate messages with indexes >= 'index'.
   CHECKED_STATUS GetSegmentPrefixNotIncluding(int64_t index,
-                                      SegmentSequence* segments) const;
+                                      SegmentSequence* segments) const;//DHQ: 不含index的最大的segment. sequence是啥？
 
   // Return the minimum replicate index that is retained in the currently available
   // logs. May return -1 if no replicates have been logged.
-  int64_t GetMinReplicateIndex() const;
+  int64_t GetMinReplicateIndex() const;//DHQ: 这个index，应该是全局顺序增长的，不是OpID。
 
   // Returns a map of maximum log index in segment -> segment size representing all the segments
   // that start after 'min_op_idx', up to 'segments_count'.
