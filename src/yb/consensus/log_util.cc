@@ -217,7 +217,7 @@ void ReadableLogSegment::UpdateReadableToOffset(int64_t readable_to_offset) {
   readable_to_offset_.Store(readable_to_offset);
   file_size_.StoreMax(readable_to_offset);
 }
-
+//DHQ: 这个是通过Scanning
 Status ReadableLogSegment::RebuildFooterByScanning() {
   TRACE_EVENT1("log", "ReadableLogSegment::RebuildFooterByScanning",
                "path", path_);
@@ -411,7 +411,7 @@ Status ReadableLogSegment::ReadFooter() {
   footer_.Swap(&footer);
   return Status::OK();
 }
-
+//DHQ: ReadFooter，从文件后面seek一个固定大小，读取magic和Length
 Status ReadableLogSegment::ReadFooterMagicAndFooterLength(uint32_t *len) {
   uint8_t scratch[kLogSegmentFooterMagicAndFooterLength];
   Slice slice;

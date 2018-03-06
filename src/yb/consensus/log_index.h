@@ -116,7 +116,7 @@ class LogIndex : public RefCountedThreadSafe<LogIndex> {
   // Map from chunk index to IndexChunk. The chunk index is the log index modulo
   // the number of entries per chunk (see docs in log_index.cc).
   // Protected by open_chunks_lock_
-  typedef std::map<int64_t, scoped_refptr<IndexChunk> > ChunkMap;
+  typedef std::map<int64_t, scoped_refptr<IndexChunk> > ChunkMap; //DHQ: chunk固定大小的好处是，很容易利用modulo运算获得chunk index。然后查一个小的chunkMap; 所以其log index不是按照文件索引的，也不需要按照文件去查。
   ChunkMap open_chunks_;
 
   DISALLOW_COPY_AND_ASSIGN(LogIndex);

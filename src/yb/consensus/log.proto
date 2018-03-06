@@ -83,7 +83,7 @@ message LogSegmentHeaderPB {
 }
 
 // A footer for a log segment.
-//
+// DHQ: 正常都应该有footer的，只有crash等情况下没有写入。
 // Log segment footers might not be present (e.g. if the server crashed) so they should contain no
 // information that cannot be obtained by actually reading the entries in the log.
 //

@@ -40,7 +40,7 @@ class Status;
 
 // A callback which takes a Status. This is typically used for functions which
 // produce asynchronous results and may fail.
-typedef Callback<void(const Status& status)> StatusCallback;
+typedef Callback<void(const Status& status)> StatusCallback; //Callback在bind.h中定义
 
 // To be used when a function signature requires a StatusCallback but none
 // is needed.

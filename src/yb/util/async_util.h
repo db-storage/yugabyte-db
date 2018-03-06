@@ -52,14 +52,14 @@ namespace yb {
 //   Synchronizer s;
 //   SomeAsyncMethod(s.callback());
 //   CHECK_OK(s.Wait());
-class Synchronizer {
+class Synchronizer {//DHQ: 上面是个明确的例子，就是为了利用异步接口，实现同步语意，所以立即有个Wait()，否则s就出了scope了。这个类的callback并不能干别的事情，只用于通知执行结束。
  public:
   Synchronizer(const Synchronizer&) = delete;
   void operator=(const Synchronizer&) = delete;
 
   Synchronizer() {}
 
-  void StatusCB(const Status& status) {
+  void StatusCB(const Status& status) {//DHQ: StatusCallback的一个例子。实际上下面的Bind，给了另外一个参数，Unretained(this).这个就成了一个成员函数调用。
     std::lock_guard<std::mutex> lock(mutex_);
     if (!assigned_) {
       assigned_ = true;

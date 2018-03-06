@@ -146,7 +146,7 @@ Status LogCache::AppendOperations(const ReplicateMsgs& msgs,
   int64_t first_idx_in_batch = msgs.front()->id().index();
   int64_t last_idx_in_batch = msgs.back()->id().index();
 
-  if (first_idx_in_batch != next_sequential_op_index_) {
+  if (first_idx_in_batch != next_sequential_op_index_) {//DHQ: 因为raft在append时要求连续；所以不存在往后跳，只有覆盖。例如，follower的某些log，被leader的覆盖。
     // If the index is not consecutive then it must be lower than or equal
     // to the last index, i.e. we're overwriting.
     CHECK_LE(first_idx_in_batch, next_sequential_op_index_);
@@ -195,14 +195,14 @@ Status LogCache::AppendOperations(const ReplicateMsgs& msgs,
   for (const auto& msg : msgs) {
     InsertOrDie(&cache_,  msg->id().index(), msg);
   }
-
+  //DHQ: 这段是对潜在死锁的分析。因为这个函数可能因为IO阻塞，而且其会调也需要锁。
   // We drop the lock during the AsyncAppendReplicates call, since it may block
   // if the queue is full, and the queue might not drain if it's trying to call
   // our callback and blocked on this lock.
   l.unlock();
 
   Status log_status = log_->AsyncAppendReplicates(
-    msgs, Bind(&LogCache::LogCallback,
+    msgs, Bind(&LogCache::LogCallback, //DHQ: LogCallback是一个确定的callback，它里面又封装了用户的callback
                Unretained(this),
                last_idx_in_batch,
                borrowed_memory,
@@ -272,7 +272,7 @@ Status LogCache::LookupOpId(int64_t op_index, OpId* op_id) const {
   }
 
   // If it misses, read from the log.
-  return log_->GetLogReader()->LookupOpId(op_index, op_id);
+  return log_->GetLogReader()->LookupOpId(op_index, op_id); //DHQ: cache中没有，从index查找
 }
 
 namespace {
@@ -318,7 +318,7 @@ Status LogCache::ReadOps(int64_t after_op_index,
 
       ReplicateMsgs raw_replicate_ptrs;
       RETURN_NOT_OK_PREPEND(
-        log_->GetLogReader()->ReadReplicatesInRange(
+        log_->GetLogReader()->ReadReplicatesInRange( //DHQ: 调用reader的读盘函数
           next_index, up_to, remaining_space, &raw_replicate_ptrs),
         Substitute("Failed to read ops $0..$1", next_index, up_to));
       l.lock();

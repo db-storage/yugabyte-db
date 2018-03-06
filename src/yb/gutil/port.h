@@ -579,7 +579,7 @@ extern inline void prefetch(const char *x) {
 // the absence of better information (ie. -fprofile-arcs).
 //
 #if defined(__GNUC__)
-#define PREDICT_FALSE(x) (__builtin_expect(x, 0))
+#define PREDICT_FALSE(x) (__builtin_expect(x, 0)) //DHQ: 这个实际上告诉编译器，一般来说，x是0,可以做分支优化。但是最终判断的还是x
 #define PREDICT_TRUE(x) (__builtin_expect(!!(x), 1))
 #else
 #define PREDICT_FALSE(x) x

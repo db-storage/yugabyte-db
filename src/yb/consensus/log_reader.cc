@@ -152,7 +152,7 @@ Status LogReader::Init(const string& tablet_wal_path) {
   SegmentSequence read_segments;
 
   // build a log segment from each file
-  for (const string &log_file : log_files) {
+  for (const string &log_file : log_files) {//DHQ: log_files，应该没有保证按照sequence顺序,二十按照字符排序
     if (HasPrefixString(log_file, FsManager::kWalFileNamePrefix)) {
       string fqp = JoinPathSegments(tablet_wal_path, log_file);
       scoped_refptr<ReadableLogSegment> segment;
@@ -161,7 +161,7 @@ Status LogReader::Init(const string& tablet_wal_path) {
       DCHECK(segment);
       CHECK(segment->IsInitialized()) << "Uninitialized segment at: " << segment->path();
 
-      if (!segment->HasFooter()) {
+      if (!segment->HasFooter()) {//DHQ: Open时，已经读取Headeer和Footer
         LOG(WARNING) << "Log segment " << fqp << " was likely left in-progress "
             "after a previous crash. Will try to rebuild footer by scanning data.";
         RETURN_NOT_OK(segment->RebuildFooterByScanning());
@@ -173,7 +173,7 @@ Status LogReader::Init(const string& tablet_wal_path) {
 
   // Sort the segments by sequence number.
   std::sort(read_segments.begin(), read_segments.end(), LogSegmentSeqnoComparator());
-
+  //DHQ: 内存中各个segments之间按照sequence number排序
   {
     std::lock_guard<simple_spinlock> lock(lock_);
 
@@ -240,7 +240,7 @@ int64_t LogReader::GetMinReplicateIndex() const {
     if (min_remaining_op_idx == -1 ||
         segment->footer().min_replicate_index() < min_remaining_op_idx) {
       min_remaining_op_idx = segment->footer().min_replicate_index();
-    }
+    }//DHQ: 这个还需要逐渐比较？ segments如果按照sequence排序了，那么最小的有min值的就是了？
   }
   return min_remaining_op_idx;
 }
@@ -397,9 +397,9 @@ Status LogReader::ReadReplicatesInRange(
   replicates->swap(replicates_tmp);
   return Status::OK();
 }
-
+//DHQ: 这个类似于获取term的操作。入口参数时op_index
 Status LogReader::LookupOpId(int64_t op_index, OpId* op_id) const {
-  LogIndexEntry index_entry;
+  LogIndexEntry index_entry;//DHQ: 这个是从log_index获取，可能读log index file，但不是读log file, index file已经有term,可以满足OpId
   RETURN_NOT_OK_PREPEND(log_index_->GetEntry(op_index, &index_entry),
                         strings::Substitute("Failed to read log index for op $0", op_index));
   *op_id = index_entry.op_id;
@@ -412,7 +412,7 @@ Status LogReader::GetSegmentsSnapshot(SegmentSequence* segments) const {
   segments->assign(segments_.begin(), segments_.end());
   return Status::OK();
 }
-
+//DHQ: erase的是内存结构，不是删文件
 Status LogReader::TrimSegmentsUpToAndIncluding(int64_t segment_sequence_number) {
   std::lock_guard<simple_spinlock> lock(lock_);
   CHECK_EQ(state_, kLogReaderReading);

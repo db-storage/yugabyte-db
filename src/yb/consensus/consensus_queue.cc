@@ -303,7 +303,7 @@ Status PeerMessageQueue::AppendOperations(const ReplicateMsgs& msgs,
                                             Bind(&PeerMessageQueue::LocalPeerAppendFinished,
                                                  Unretained(this),
                                                  last_id,
-                                                 log_append_callback)));
+                                                 log_append_callback)));//DHQ: 这个是接近我们用法的callback，AppendOperations支持的Callack非常强大。
   lock.lock();
   queue_state_.last_appended = last_id;
   UpdateMetrics();

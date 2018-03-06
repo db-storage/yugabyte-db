@@ -99,7 +99,7 @@ static const int64_t kEntriesPerIndexChunk = 16 * 1024;
 #else
 static const int64_t kEntriesPerIndexChunk = 1000000;
 #endif
-
+//DHQ: 每个chunk单独一个文件？否则何来ChunkFileSize? 跟mmap啥关系？
 static const int64_t kChunkFileSize = kEntriesPerIndexChunk * sizeof(PhysicalEntry);
 
 ////////////////////////////////////////////////////////////
@@ -109,7 +109,7 @@ static const int64_t kChunkFileSize = kEntriesPerIndexChunk * sizeof(PhysicalEnt
 // A single chunk of the index, representing a fixed number of entries.
 // This class maintains the open file descriptor and mapped memory.
 class LogIndex::IndexChunk : public RefCountedThreadSafe<LogIndex::IndexChunk> {
- public:
+ public://DHQ: fixed number of entries? fix的是chunk内entry个数，不代表log file有多少个。 
   explicit IndexChunk(string path);
   ~IndexChunk();
 
@@ -146,7 +146,7 @@ LogIndex::IndexChunk::~IndexChunk() {
     close(fd_);
   }
 }
-
+//DHQ: 打开文件(index chunk file)，然后进行mmap
 Status LogIndex::IndexChunk::Open() {
   RETRY_ON_EINTR(fd_, open(path_.c_str(), O_CLOEXEC | O_CREAT | O_RDWR, 0666));
   RETURN_NOT_OK(CheckError(fd_, "open"));
@@ -187,7 +187,7 @@ LogIndex::LogIndex(std::string base_dir) : base_dir_(std::move(base_dir)) {}
 
 LogIndex::~LogIndex() {
 }
-
+//DHQ: ChunkPath的后缀，是chunk_idx,所以实际上每个index chunk，一个文件
 string LogIndex::GetChunkPath(int64_t chunk_idx) {
   return StringPrintf("%s/index.%09" PRId64, base_dir_.c_str(), chunk_idx);
 }
@@ -224,7 +224,7 @@ Status LogIndex::GetChunkForIndex(int64_t log_index, bool create,
     if (PREDICT_FALSE(ContainsKey(open_chunks_, chunk_idx))) {
       // Someone else opened the chunk in the meantime.
       // We'll just return that one.
-      *chunk = FindOrDie(open_chunks_, chunk_idx);
+      *chunk = FindOrDie(open_chunks_, chunk_idx);//DHQ: 自动调用destructor，close自己打开的那个fd?
       return Status::OK();
     }
 
@@ -246,7 +246,7 @@ Status LogIndex::AddEntry(const LogIndexEntry& entry) {
   phys.segment_sequence_number = entry.segment_sequence_number;
   phys.offset_in_segment = entry.offset_in_segment;
 
-  chunk->SetEntry(index_in_chunk, phys);
+  chunk->SetEntry(index_in_chunk, phys); //DHQ: 里面是memcpy操作，mmap
   VLOG(3) << "Added log index entry " << entry.ToString();
 
   return Status::OK();
@@ -271,7 +271,7 @@ Status LogIndex::GetEntry(int64_t index, LogIndexEntry* entry) {
 
   return Status::OK();
 }
-
+//DHQ: 从GC看，chunks也是根据index这个来GC的。但是chunk是可以动态打开的。
 void LogIndex::GC(int64_t min_index_to_retain) {
   int min_chunk_to_retain = min_index_to_retain / kEntriesPerIndexChunk;
 
@@ -288,7 +288,7 @@ void LogIndex::GC(int64_t min_index_to_retain) {
   // Outside of the lock, try to delete them (avoid holding the lock during IO).
   for (int64_t chunk_idx : chunks_to_delete) {
     string path = GetChunkPath(chunk_idx);
-    int rc = unlink(path.c_str());
+    int rc = unlink(path.c_str());//DHQ: file被unlink了
     if (rc != 0) {
       PLOG(WARNING) << "Unable to delete index chunk " << path;
       continue;

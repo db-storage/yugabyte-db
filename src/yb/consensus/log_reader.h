@@ -56,8 +56,8 @@ struct LogIndexEntry;
 // Reads a set of segments from a given path. Segment headers and footers
 // are read and parsed, but entries are not.
 // This class is thread safe.
-class LogReader {
- public:
+class LogReader {//DHQ: 注意，这个不是为了某个segment服务的，而是很多。维护了segment列表
+ public://DHQ: 上面说了，headers and footers都读了，但是entries没有。应该是按需读取。
   ~LogReader();
 
   // Opens a LogReader on a specific log directory, and sets 'reader' to the newly created
@@ -110,7 +110,7 @@ class LogReader {
 
   // Copies a snapshot of the current sequence of segments into 'segments'.
   // 'segments' will be cleared first.
-  CHECKED_STATUS GetSegmentsSnapshot(SegmentSequence* segments) const;
+  CHECKED_STATUS GetSegmentsSnapshot(SegmentSequence* segments) const;//DHQ: 这个不是文件的snapshot，而是内存结构的Snapshot
 
   // Reads all ReplicateMsgs from 'starting_at' to 'up_to' both inclusive.
   // The caller takes ownership of the returned ReplicateMsg objects.
@@ -120,7 +120,7 @@ class LogReader {
   // all, then will read exactly one operation.
   //
   // Requires that a LogIndex was passed into LogReader::Open().
-  CHECKED_STATUS ReadReplicatesInRange(
+  CHECKED_STATUS ReadReplicatesInRange(//DHQ: 这个是真正读log获取log entry的
       const int64_t starting_at,
       const int64_t up_to,
       int64_t max_bytes_to_read,
@@ -199,7 +199,7 @@ class LogReader {
   CHECKED_STATUS InitEmptyReaderForTests();
 
   FsManager *fs_manager_;
-  const scoped_refptr<LogIndex> log_index_;
+  const scoped_refptr<LogIndex> log_index_; //DHQ: 这个是传入的
   const std::string tablet_id_;
 
   // Metrics
@@ -209,7 +209,7 @@ class LogReader {
 
   // The sequence of all current log segments in increasing sequence number
   // order.
-  SegmentSequence segments_;
+  SegmentSequence segments_; //DHQ: std::vector
 
   mutable simple_spinlock lock_;
 

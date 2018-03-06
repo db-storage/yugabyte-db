@@ -97,7 +97,7 @@ class LogCache {
   // If the ops being requested are not available in the log, this will synchronously
   // read these ops from disk. Therefore, this function may take a substantial amount
   // of time and should not be called with important locks held, etc.
-  CHECKED_STATUS ReadOps(int64_t after_op_index,
+  CHECKED_STATUS ReadOps(int64_t after_op_index,//DHQ: 不再cache则从磁盘读
                  int max_size_bytes,
                  ReplicateMsgs* messages,
                  OpId* preceding_op);
@@ -118,7 +118,7 @@ class LogCache {
   bool HasOpBeenWritten(int64_t log_index) const;
 
   // Evict any operations with op index <= 'index'.
-  void EvictThroughOp(int64_t index);
+  void EvictThroughOp(int64_t index);//DHQ: 这个是cache操作，比如空间不足时
 
   // Return the number of bytes of memory currently in use by the cache.
   int64_t BytesUsed() const;
@@ -146,7 +146,7 @@ class LogCache {
   // Returns "Incomplete" if the op has not yet been written.
   // Returns "NotFound" if the op has been GCed.
   // Returns another bad Status if the log index fails to load (eg. due to an IO error).
-  CHECKED_STATUS LookupOpId(int64_t op_index, OpId* op_id) const;
+  CHECKED_STATUS LookupOpId(int64_t op_index, OpId* op_id) const;//DHQ: 提到log index，这个需要读盘
 
  private:
   FRIEND_TEST(LogCacheTest, TestAppendAndGetMessages);
@@ -192,13 +192,13 @@ class LogCache {
 
   // The next log index to append. Each append operation must either
   // start with this log index, or go backward (but never skip forward).
-  int64_t next_sequential_op_index_;
+  int64_t next_sequential_op_index_;//DHQ: 解释很明白，下一个，或者是覆盖前面的(catchup等场合)
 
   // Any operation with an index >= min_pinned_op_ may not be
   // evicted from the cache. This is used to prevent ops from being evicted
   // until they successfully have been appended to the underlying log.
   // Protected by lock_.
-  int64_t min_pinned_op_index_;
+  int64_t min_pinned_op_index_;//DHQ: 控制哪些可以从cache evict掉
 
   // Pointer to a parent memtracker for all log caches. This
   // exists to compute server-wide cache size and enforce a

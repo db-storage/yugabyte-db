@@ -540,7 +540,7 @@ Status Log::DoAppend(LogEntryBatch* entry_batch, bool caller_owns_operation) {
     metrics_->bytes_logged->IncrementBy(entry_batch_bytes);
   }
 
-  CHECK_OK(UpdateIndexForBatch(*entry_batch, start_offset));
+  CHECK_OK(UpdateIndexForBatch(*entry_batch, start_offset)); //DHQ: 更新index
   UpdateFooterForBatch(entry_batch);
 
   // We expect the caller to free the actual entries if caller_owns_operation is set.
@@ -720,7 +720,7 @@ Status Log::WaitUntilAllFlushed() {
   RETURN_NOT_OK(Reserve(FLUSH_MARKER, &entry_batch, &reserved_entry_batch));
   Synchronizer s;
   RETURN_NOT_OK(AsyncAppend(reserved_entry_batch, s.AsStatusCallback()));
-  return s.Wait();
+  return s.Wait();//DHQ: 直接等在s上即可
 }
 
 yb::OpId Log::GetLatestEntryOpId() const {
