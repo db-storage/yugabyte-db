@@ -197,7 +197,7 @@ Status LogIndex::OpenChunk(int64_t chunk_idx, scoped_refptr<IndexChunk>* chunk) 
 
   scoped_refptr<IndexChunk> new_chunk(new IndexChunk(path));
   RETURN_NOT_OK(new_chunk->Open());
-  chunk->swap(new_chunk);
+  chunk->swap(new_chunk);//DHQ: 这个scoped_ptr，也能支持swap
   return Status::OK();
 }
 //DHQ: 对于我们把不同raft group的log放在同一文件的场合，raft的log id，已经不是log file内部的id。更需要一个索引了。
@@ -218,7 +218,7 @@ Status LogIndex::GetChunkForIndex(int64_t log_index, bool create,
   }
 
   RETURN_NOT_OK_PREPEND(OpenChunk(chunk_idx, chunk),
-                        "Couldn't open index chunk");
+                        "Couldn't open index chunk");//DHQ: 之前没有open该chunk，尝试open
   {
     std::lock_guard<simple_spinlock> l(open_chunks_lock_);
     if (PREDICT_FALSE(ContainsKey(open_chunks_, chunk_idx))) {
@@ -228,7 +228,7 @@ Status LogIndex::GetChunkForIndex(int64_t log_index, bool create,
       return Status::OK();
     }
 
-    InsertOrDie(&open_chunks_, chunk_idx, *chunk);
+    InsertOrDie(&open_chunks_, chunk_idx, *chunk);//DHQ: 插入到open_chunks_里面
   }
 
   return Status::OK();

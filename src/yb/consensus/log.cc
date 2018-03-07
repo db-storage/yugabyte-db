@@ -172,7 +172,7 @@ Status Log::AppendThread::Init() {
       &AppendThread::RunThread, this, &thread_));
   return Status::OK();
 }
-
+//DHQ: 是个循环，定期下刷queue中已有batch并sync，然后再调用注册的callback
 void Log::AppendThread::RunThread() {
   bool shutting_down = false;
 
@@ -230,7 +230,7 @@ void Log::AppendThread::RunThread() {
       }
     }
 
-    Status s = log_->Sync();
+    Status s = log_->Sync(); //DHQ: 貌似没有sync index chunk?
     if (PREDICT_FALSE(!s.ok())) {
       LOG(ERROR) << "Error syncing log" << s.ToString();
       DLOG(FATAL) << "Aborting: " << s.ToString();
@@ -415,12 +415,12 @@ Status Log::RollOver() {
   LOG(INFO) << "Rolled over to a new segment: " << active_segment_->path();
   return Status::OK();
 }
-//DHQ: 参见log.h对Reserver的注释。
+//DHQ: 参见log.h对Reserve的注释。 但是我感觉并没有在queue上预留任何东西，只是先产生了个Batch结构而已。
 Status Log::Reserve(LogEntryTypePB type,
                     LogEntryBatchPB* entry_batch,
                     LogEntryBatch** reserved_entry) { //DHQ: reserved_entry是用于获取返回值的
   TRACE_EVENT0("log", "Log::Reserve");
-  DCHECK(reserved_entry != nullptr);
+  DCHECK(reserved_entry != nullptr);//DHQ: 这个跟下面的{ }没关系
   {
     boost::shared_lock<rw_spinlock> read_lock(state_lock_.get_lock());
     CHECK_EQ(kLogWriting, log_state_);
@@ -456,7 +456,7 @@ Status Log::AsyncAppend(LogEntryBatch* entry_batch, const StatusCallback& callba
   entry_batch->set_callback(callback);
   entry_batch->MarkReady();
   //DHQ: 对于Queue来说，batch是一个item
-  if (PREDICT_FALSE(!entry_batch_queue_.BlockingPut(entry_batch))) {
+  if (PREDICT_FALSE(!entry_batch_queue_.BlockingPut(entry_batch))) {//DHQ: Async的是写盘，不是Put到queue，put可能因为锁而等待一会. Put进入queue的，是个batch指针。
     delete entry_batch;
     return kLogShutdownStatus;
   }
@@ -467,7 +467,7 @@ Status Log::AsyncAppend(LogEntryBatch* entry_batch, const StatusCallback& callba
 Status Log::AsyncAppendReplicates(const ReplicateMsgs& msgs,
                                   const StatusCallback& callback) {
   LogEntryBatchPB batch;
-  CreateBatchFromAllocatedOperations(msgs, &batch);
+  CreateBatchFromAllocatedOperations(msgs, &batch);//DHQ: 将多个entry，变成一个batch
 
   LogEntryBatch* reserved_entry_batch;
   RETURN_NOT_OK(Reserve(REPLICATE, &batch, &reserved_entry_batch));
@@ -475,13 +475,13 @@ Status Log::AsyncAppendReplicates(const ReplicateMsgs& msgs,
   // the LogEntryBatch. This will make sure there's a reference for each
   // replicate while we're appending.
   reserved_entry_batch->SetReplicates(msgs); //CreateBatchFromAllocatedOperations里面使用了shared_ptr的raw ptr，这里增加各个shared_ptr的引用，防止被释放了。
-  //DHQ: AsyncAppend内部调用的BlockingPut，可能阻塞，不能总持有lock，所以先Reserver，后面就放锁了。
+  //DHQ: AsyncAppend内部调用的BlockingPut，可能阻塞，不能总持有lock，所以先Reserve，后面就放锁了。
   RETURN_NOT_OK(AsyncAppend(reserved_entry_batch, callback));
   return Status::OK();
 }
 
 Status Log::DoAppend(LogEntryBatch* entry_batch, bool caller_owns_operation) {
-  RETURN_NOT_OK(entry_batch->Serialize()); //DHQ: 写到segment的buffer
+  RETURN_NOT_OK(entry_batch->Serialize()); //DHQ: 将PB转成string形式，写到segment的buffer
   size_t num_entries = entry_batch->count();
   DCHECK_GT(num_entries, 0) << "Cannot call DoAppend() with zero entries reserved";
 
@@ -540,8 +540,8 @@ Status Log::DoAppend(LogEntryBatch* entry_batch, bool caller_owns_operation) {
     metrics_->bytes_logged->IncrementBy(entry_batch_bytes);
   }
 
-  CHECK_OK(UpdateIndexForBatch(*entry_batch, start_offset)); //DHQ: 更新index
-  UpdateFooterForBatch(entry_batch);
+  CHECK_OK(UpdateIndexForBatch(*entry_batch, start_offset)); //DHQ: 更新index chunk
+  UpdateFooterForBatch(entry_batch);//DHQ:这个相当于更新统计信息，不是sync
 
   // We expect the caller to free the actual entries if caller_owns_operation is set.
   if (caller_owns_operation) {
@@ -635,7 +635,7 @@ Status Log::Sync() {
       periodic_sync_needed_.store(false);
       periodic_sync_unsynced_bytes_ = 0;
       LOG_SLOW_EXECUTION(WARNING, 50, "Fsync log took a long time") {
-        RETURN_NOT_OK(active_segment_->Sync());
+        RETURN_NOT_OK(active_segment_->Sync()); //DHQ: 调用segment的Sync
 
         if (log_hooks_) {
           RETURN_NOT_OK_PREPEND(log_hooks_->PostSyncIfFsyncEnabled(),
@@ -649,7 +649,7 @@ Status Log::Sync() {
     RETURN_NOT_OK_PREPEND(log_hooks_->PostSync(), "PostSync hook failed");
   }
   // Update the reader on how far it can read the active segment.
-  reader_->UpdateLastSegmentOffset(active_segment_->written_offset());
+  reader_->UpdateLastSegmentOffset(active_segment_->written_offset());//DHQ: 对reader变得可读了
 
   return Status::OK();
 }
@@ -1046,7 +1046,7 @@ Log::~Log() {
 LogEntryBatch::LogEntryBatch(LogEntryTypePB type, LogEntryBatchPB* entry_batch_pb, size_t count)
     : type_(type),
       count_(count) {
-  entry_batch_pb_.Swap(entry_batch_pb);
+  entry_batch_pb_.Swap(entry_batch_pb);//DHQ: PB的数据，swap到成员变量里面了
 }
 
 LogEntryBatch::~LogEntryBatch() {
@@ -1066,7 +1066,7 @@ Status LogEntryBatch::Serialize() {
     state_ = kEntrySerialized;
     return Status::OK();
   }
-  total_size_bytes_ = entry_batch_pb_.ByteSize();
+  total_size_bytes_ = entry_batch_pb_.ByteSize();//DHQ: serilize的就是batch_pb
   buffer_.reserve(total_size_bytes_);
 
   if (!pb_util::AppendToString(entry_batch_pb_, &buffer_)) {

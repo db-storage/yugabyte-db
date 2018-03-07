@@ -366,7 +366,7 @@ class Log : public RefCountedThreadSafe<Log> {
   std::string next_segment_path_;
 
   // Lock to protect mutations to log_state_ and other shared state variables.
-  mutable percpu_rwlock state_lock_;
+  mutable percpu_rwlock state_lock_;//DHQ: 几个不同的lock，后面有mutex，保护不同内容
 
   LogState log_state_;
 

@@ -156,7 +156,7 @@ string InitializationErrorMessage(const char* action,
 }
 
 } // anonymous namespace
-
+//DHQ: MessageLite，据说Message也实现了它的接口。https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.message_lite
 bool AppendToString(const MessageLite &msg, faststring *output) {
   DCHECK(msg.IsInitialized()) << InitializationErrorMessage("serialize", msg);
   return AppendPartialToString(msg, output);
