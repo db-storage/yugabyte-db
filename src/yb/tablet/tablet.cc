@@ -996,7 +996,7 @@ Result<yb::OpId> Tablet::MaxPersistentOpId() const {
   ScopedPendingOperation scoped_read_operation(&pending_op_counter_);
   RETURN_NOT_OK(scoped_read_operation);
 
-  auto temp = rocksdb_->GetFlushedFrontier();
+  auto temp = rocksdb_->GetFlushedFrontier(); //DHQ: 这个是对rocksdb的修改
   if (!temp) {
     return yb::OpId();
   }

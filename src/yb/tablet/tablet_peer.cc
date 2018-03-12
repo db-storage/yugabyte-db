@@ -590,7 +590,7 @@ Status TabletPeer::GetEarliestNeededLogIndex(int64_t* min_index) const {
 
   // Next, we interrogate the anchor registry.
   // Returns OK if minimum known, NotFound if no anchors are registered.
-  {
+  {//DHQ: 我们在做split时，应该也有这种需求，把开始执行split后的log pin住。
     int64_t min_anchor_index;
     Status s = log_anchor_registry_->GetEarliestRegisteredLogIndex(&min_anchor_index);
     if (PREDICT_FALSE(!s.ok())) {
