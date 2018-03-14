@@ -188,7 +188,7 @@ class DocBoundaryValuesExtractor : public rocksdb::BoundaryValuesExtractor {
     return Status::OK();
   }
 
-  rocksdb::UserFrontierPtr CreateFrontier() override {
+  rocksdb::UserFrontierPtr CreateFrontier() override { //DHQ: 此处创建的，为什么在外部创建？是不是为rocksdb使用？
     return new docdb::ConsensusFrontier();
   }
 

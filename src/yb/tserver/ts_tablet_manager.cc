@@ -553,7 +553,7 @@ string LogPrefix(const string& tablet_id, const string& uuid) {
   return "T " + tablet_id + " P " + uuid + ": ";
 }
 
-Status CheckLeaderTermNotLower(
+Status CheckLeaderTermNotLower(//DHQ: 这个用于读么？
     const string& tablet_id,
     const string& uuid,
     int64_t leader_term,
@@ -652,7 +652,7 @@ Status TSTabletManager::StartRemoteBootstrap(const StartRemoteBootstrapRequestPB
                                             bootstrap_peer_uuid, bootstrap_peer_addr.ToString());
   LOG(INFO) << init_msg;
   TRACE(init_msg);
-
+//DHQ: 创建RemoteBootstrapClient
   gscoped_ptr<YB_EDITION_NS_PREFIX RemoteBootstrapClient> rb_client(
       new YB_EDITION_NS_PREFIX RemoteBootstrapClient(
           tablet_id, fs_manager_, server_->messenger(), fs_manager_->uuid()));

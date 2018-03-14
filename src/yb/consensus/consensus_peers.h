@@ -122,14 +122,14 @@ class Peer {
   CHECKED_STATUS Init();
 
   // Signals that this peer has a new request to replicate/store.
-  CHECKED_STATUS SignalRequest(RequestTriggerMode trigger_mode);
+  CHECKED_STATUS SignalRequest(RequestTriggerMode trigger_mode); //DHQ:这个应该类似于Propose
 
   const RaftPeerPB& peer_pb() const { return peer_pb_; }
 
   // Returns the PeerProxy if this is a remote peer or NULL if it
   // isn't. Used for tests to fiddle with the proxy and emulate remote
   // behavior.
-  PeerProxy* GetPeerProxyForTests();
+  PeerProxy* GetPeerProxyForTests(); //DHQ: 测试用的
 
   // Stop sending requests and periodic heartbeats.
   //

@@ -91,7 +91,7 @@ typedef yb::clone_ptr<UserFrontier> UserFrontierPtr;
 // When writing a batch user could specify frontier values of that batch.
 // So we would maintain those values for each SST file and whole DB.
 // This class defines an abstract interface for single user frontier.
-class UserFrontier {
+class UserFrontier {//DHQ: 纯虚类，没有自己的数据
  public:
   virtual std::unique_ptr<UserFrontier> Clone() const = 0;
   virtual std::string ToString() const = 0;
@@ -120,7 +120,7 @@ inline std::ostream& operator<<(std::ostream& out, const UserFrontier& frontier)
 }
 
 // Abstract interface to a pair of user defined frontiers - smallest and largest.
-class UserFrontiers {
+class UserFrontiers {//DHQ: 这个类名称带个s，已经不是一个Frontier，而是有smallest和largest，可以比较了 
  public:
   virtual std::unique_ptr<UserFrontiers> Clone() const = 0;
   virtual std::string ToString() const = 0;
@@ -132,7 +132,7 @@ class UserFrontiers {
   virtual ~UserFrontiers() {}
 };
 
-template<class Frontier>
+template<class Frontier> //DHQ: 支持多种 Frontier
 class UserFrontiersBase : public rocksdb::UserFrontiers {
  public:
   std::string ToString() const override {

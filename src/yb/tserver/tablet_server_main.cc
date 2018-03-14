@@ -113,7 +113,7 @@ static int TabletServerMain(int argc, char** argv) {
 
   auto tablet_server_options = TabletServerOptions::CreateTabletServerOptions();
   LOG_AND_RETURN_FROM_MAIN_NOT_OK(tablet_server_options);
-  YB_EDITION_NS_PREFIX TabletServer server(*tablet_server_options);
+  YB_EDITION_NS_PREFIX TabletServer server(*tablet_server_options); //DHQ: 这个是Tablet Server的启动
   LOG(INFO) << "Initializing tablet server...";
   LOG_AND_RETURN_FROM_MAIN_NOT_OK(server.Init());
   LOG(INFO) << "Starting tablet server...";
@@ -127,7 +127,7 @@ static int TabletServerMain(int argc, char** argv) {
   }
 
   std::unique_ptr<RedisServer> redis_server;
-  if (FLAGS_start_redis_proxy) {
+  if (FLAGS_start_redis_proxy) {//DHQ: 这个是给定条件下运行？或者说兼做redis proxy?
     RedisServerOptions redis_server_options;
     redis_server_options.rpc_opts.rpc_bind_addresses = FLAGS_redis_proxy_bind_address;
     redis_server_options.webserver_opts.port = FLAGS_redis_proxy_webserver_port;

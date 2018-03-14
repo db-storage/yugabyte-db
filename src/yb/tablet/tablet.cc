@@ -498,7 +498,7 @@ void Tablet::ApplyRowOperations(WriteOperationState* operation_state) {
   docdb::ConsensusFrontiers frontiers;
   set_op_id({operation_state->op_id().term(), operation_state->op_id().index()}, &frontiers);
   set_hybrid_time(operation_state->hybrid_time(), &frontiers);
-  ApplyKeyValueRowOperations(put_batch, &frontiers, operation_state->hybrid_time());
+  ApplyKeyValueRowOperations(put_batch, &frontiers, operation_state->hybrid_time());//DHQ: 真正修改rocksdb的地方，里面调用batch
 }
 
 Status Tablet::CreateCheckpoint(const std::string& dir,
@@ -996,7 +996,7 @@ Result<yb::OpId> Tablet::MaxPersistentOpId() const {
   ScopedPendingOperation scoped_read_operation(&pending_op_counter_);
   RETURN_NOT_OK(scoped_read_operation);
 
-  auto temp = rocksdb_->GetFlushedFrontier(); //DHQ: 这个是对rocksdb的修改
+  auto temp = rocksdb_->GetFlushedFrontier(); //DHQ: 从rocksdb获取已经flush到磁盘的最大的Fontier
   if (!temp) {
     return yb::OpId();
   }

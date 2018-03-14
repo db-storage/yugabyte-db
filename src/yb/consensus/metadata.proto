@@ -68,7 +68,7 @@ message RaftPeerPB {
     UNKNOWN_ROLE = 7;
   };
 
-  enum MemberType {
+  enum MemberType {//DHQ: 这个跟我们常见的role是不同的。因为引入了 observer?
     UNKNOWN_MEMBER_TYPE = 999;
 
     // Any server added into a running consensus with the intention of becoming a VOTER, should be

@@ -1147,7 +1147,7 @@ Status RaftConsensus::StartReplicaOperationUnlocked(
   }
 
   VLOG_WITH_PREFIX_UNLOCKED(1) << "Starting operation: " << msg->id().ShortDebugString();
-  scoped_refptr<ConsensusRound> round(new ConsensusRound(this, msg));
+  scoped_refptr<ConsensusRound> round(new ConsensusRound(this, msg)); //DHQ: 创建了ConsensuRound
   ConsensusRound* round_ptr = round.get();
   RETURN_NOT_OK(state_->GetReplicaOperationFactoryUnlocked()->
       StartReplicaOperation(round, propagated_safe_time));

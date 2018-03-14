@@ -230,7 +230,7 @@ Status FlushJob::WriteLevel0Table(const autovector<MemTable*>& mems,
       total_num_entries += m->num_entries();
       total_num_deletes += m->num_deletes();
       total_memory_usage += m->ApproximateMemoryUsage();
-      const auto* range = m->Frontiers();
+      const auto* range = m->Frontiers();//DHQ: 从它读,修改meta
       if (range) {
         UserFrontier::Update(
             &range->Smallest(), UpdateUserValueType::kSmallest, &meta->smallest.user_frontier);

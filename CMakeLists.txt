@@ -549,6 +549,7 @@ VALIDATE_COMPILER_TYPE()
 if (NOT APPLE)
   # To enable 16-byte atomics support we should specify appropriate architecture.
   ADD_CXX_FLAGS("-march=ivybridge")
+  #ADD_CXX_FLAGS("-mf16c")
 endif()
 
 # Include compiler type and version in the compiler command line so that binaries built by different

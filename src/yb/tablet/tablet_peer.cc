@@ -174,14 +174,14 @@ Status TabletPeer::InitTabletPeer(const shared_ptr<TabletClass> &tablet,
 
     tablet->SetMemTableFlushFilterFactory([log] {
       auto index = log->GetLatestEntryOpId().index;
-      return [index] (const rocksdb::MemTable& memtable) -> Result<bool> {
+      return [index] (const rocksdb::MemTable& memtable) -> Result<bool> {//DHQ: Lambda
         auto frontiers = memtable.Frontiers();
         if (frontiers) {
           const auto& largest = down_cast<const docdb::ConsensusFrontier&>(frontiers->Largest());
           // We can only flush this memtable if all operations written to it have also been written
           // to the log (maybe not synced, if durable_wal_write is disabled, but that's OK).
           return largest.op_id().index <= index;
-        }
+        }//DHQ: 事实上，下面的就是错误，不应该存在的情况。
         // This is a degenerate case that should ideally never occur. An empty memtable got into the
         // list of immutable memtables. We say it is OK to flush it and move on.
         static const char* error_msg =
@@ -424,7 +424,7 @@ Status TabletPeer::WaitUntilConsensusRunning(const MonoDelta& timeout) {
   }
   return Status::OK();
 }
-
+//DHQ: WriteOperation在此创建
 Status TabletPeer::SubmitWrite(std::unique_ptr<WriteOperationState> state) {
   auto operation = std::make_unique<WriteOperation>(std::move(state), consensus::LEADER);
   RETURN_NOT_OK(CheckRunning());

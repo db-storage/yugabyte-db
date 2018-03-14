@@ -545,7 +545,7 @@ void TabletServiceImpl::Truncate(const TruncateRequestPB* req,
   tablet_peer->Submit(
       std::make_unique<tablet::TruncateOperation>(std::move(tx_state), consensus::LEADER));
 }
-
+//DHQ: 创建新的Tablet，CreateTablet
 void TabletServiceAdminImpl::CreateTablet(const CreateTabletRequestPB* req,
                                           CreateTabletResponsePB* resp,
                                           rpc::RpcContext context) {

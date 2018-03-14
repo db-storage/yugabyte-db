@@ -1156,7 +1156,7 @@ Status DBImpl::RecoverLogFiles(const std::vector<uint64_t>& log_numbers,
     edit.SetColumnFamily(cfd->GetID());
     auto frontier = versions_->FlushedFrontier();
     if (frontier) {
-      edit.SetFlushedFrontier(frontier->Clone());
+      edit.SetFlushedFrontier(frontier->Clone());//DHQ: Recovery时，也需要
     }
     version_edits.insert({cfd->GetID(), edit});
   }
@@ -1464,7 +1464,7 @@ Status DBImpl::WriteLevel0TableForRecovery(int job_id, ColumnFamilyData* cfd,
   auto pending_outputs_inserted_elem =
       CaptureCurrentFileNumberInPendingOutputs();
   meta.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0, 0);
-  const auto* frontier = mem->Frontiers();
+  const auto* frontier = mem->Frontiers();//DHQ: 这里不是设置mem的frontier，而是读了
   if (frontier) {
     meta.smallest.user_frontier = frontier->Smallest().Clone();
     meta.largest.user_frontier = frontier->Largest().Clone();
@@ -5454,8 +5454,8 @@ void DBImpl::GetLiveFilesMetaData(std::vector<LiveFileMetaData>* metadata) {
   InstrumentedMutexLock l(&mutex_);
   versions_->GetLiveFilesMetaData(metadata);
 }
-
-UserFrontierPtr DBImpl::GetFlushedFrontier() {
+//DHQ: Tablet层的MaxPersistentOpId有调用
+UserFrontierPtr DBImpl::GetFlushedFrontier() { //DHQ: 获取已经Flush的，这个可能是外部调用需要的
   InstrumentedMutexLock l(&mutex_);
   auto result = versions_->FlushedFrontier();
   if (result) {
@@ -5464,7 +5464,7 @@ UserFrontierPtr DBImpl::GetFlushedFrontier() {
   std::vector<LiveFileMetaData> files;
   versions_->GetLiveFilesMetaData(&files);
   UserFrontierPtr accumulated;
-  for (const auto& file : files) {
+  for (const auto& file : files) { //DHQ: 取各个文件中最大的
     if (!file.imported) {
       UserFrontier::Update(
           file.largest.user_frontier.get(), UpdateUserValueType::kLargest, &accumulated);
@@ -5486,7 +5486,7 @@ Status DBImpl::ApplyVersionEdit(VersionEdit* edit) {
 
 Status DBImpl::SetFlushedFrontier(UserFrontierPtr frontier) {
   VersionEdit edit;
-  edit.SetFlushedFrontier(std::move(frontier));
+  edit.SetFlushedFrontier(std::move(frontier)); //DHQ: 这个Edit，只修改这一点
   return ApplyVersionEdit(&edit);
 }
 

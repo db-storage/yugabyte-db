@@ -337,20 +337,20 @@ Status MemTableList::InstallMemtableFlushResults(
     // All the edits are associated with the first memtable of this batch.
     DCHECK(i == 0 || mems[i]->GetEdits()->NumEntries() == 0);
 
-    mems[i]->flush_completed_ = true;
+    mems[i]->flush_completed_ = true; //DHQ: 既有代码
     auto temp_range = mems[i]->Frontiers();
     if (temp_range) {
       if (frontiers) {
-        frontiers->Merge(*temp_range);
+        frontiers->Merge(*temp_range); //DHQ: 如果多个memtable都有 Frontier，那么Merg(后面应该是取大？
       } else {
         frontiers = temp_range->Clone();
       }
     }
-    mems[i]->file_number_ = file_number;
+    mems[i]->file_number_ = file_number; //DHQ: 既有代码
   }
   if (frontiers) {
     DCHECK_NE(0, mems[0]->edit_.GetNewFiles().size());
-    mems[0]->edit_.SetFlushedFrontier(frontiers->Largest().Clone());
+    mems[0]->edit_.SetFlushedFrontier(frontiers->Largest().Clone()); //DHQ: 应该就是约定在这个地方记录而已，不是说这个值之根mems[0]相关。
   }
 
   // if some other thread is already committing, then return

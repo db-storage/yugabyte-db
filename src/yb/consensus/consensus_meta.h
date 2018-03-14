@@ -52,7 +52,7 @@ namespace consensus {
 // In addition to the persistent state, this class also provides access to some
 // transient state. This includes the peer that this node considers to be the
 // leader of the configuration, as well as the "pending" configuration, if any.
-//
+//DHQ: pending configuration是有含义的，成员变更类
 // Conceptually, a pending configuration is one that has been proposed via a config
 // change operation (AddServer or RemoveServer from Chapter 4 of Diego Ongaro's
 // Raft thesis) but has not yet been committed. According to the above spec,
@@ -186,7 +186,7 @@ class ConsensusMetadata {
   RaftPeerPB::Role active_role_;
 
   // Durable fields.
-  ConsensusMetadataPB pb_;
+  ConsensusMetadataPB pb_;//DHQ: 这个是PB，持久化的。包含成员信息，term, last voted for TODO: 格式与tikv的有区别
 
   // The on-disk size of the consensus metadata, as of the last call to Load() or Flush().
   std::atomic<uint64_t> on_disk_size_;

@@ -249,7 +249,7 @@ class WriteBatch : public WriteBatchBase {
   WriteBatch& operator=(WriteBatch&& src);
 
   void SetFrontiers(const UserFrontiers* value) { frontiers_ = value; }
-  const UserFrontiers* Frontiers() const { return frontiers_; }
+  const UserFrontiers* Frontiers() const { return frontiers_; }//DHQ: Batch都带这个
 
  private:
   friend class WriteBatchInternal;
@@ -263,7 +263,7 @@ class WriteBatch : public WriteBatchBase {
 
  protected:
   std::string rep_;  // See comment in write_batch.cc for the format of rep_
-  const UserFrontiers* frontiers_ = nullptr;
+  const UserFrontiers* frontiers_ = nullptr; //DHQ: 在WriteBatch中带入
 
   // Intentionally copyable
 };

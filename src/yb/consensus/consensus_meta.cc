@@ -197,7 +197,7 @@ void ConsensusMetadata::MergeCommittedConsensusStatePB(const ConsensusStatePB& c
   clear_pending_config();
 }
 
-Status ConsensusMetadata::Flush() {
+Status ConsensusMetadata::Flush() {//DHQ: 这个应该是写的文件，而不是用kv形式。
   SCOPED_LOG_SLOW_EXECUTION_PREFIX(WARNING, 500, LogPrefix(), "flushing consensus metadata");
   // Sanity test to ensure we never write out a bad configuration.
   RETURN_NOT_OK_PREPEND(VerifyRaftConfig(pb_.committed_config(), COMMITTED_QUORUM),

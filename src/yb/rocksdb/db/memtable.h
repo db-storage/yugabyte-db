@@ -325,7 +325,7 @@ class MemTable {
 
   const MemTableOptions* GetMemTableOptions() const { return &moptions_; }
 
-  void UpdateFrontiers(const UserFrontiers& value) {
+  void UpdateFrontiers(const UserFrontiers& value) {//DHQ: 也有个frontiers
     if (frontiers_) {
       frontiers_->Merge(value);
     } else {

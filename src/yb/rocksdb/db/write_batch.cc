@@ -293,7 +293,7 @@ Status WriteBatch::Iterate(Handler* handler) const {
   Status s;
 
   if (frontiers_) {
-    s = handler->Frontiers(*frontiers_);
+    s = handler->Frontiers(*frontiers_); //DHQ: 把batch的frontier带入memtable. 本文件里面有定义
   }
   while (s.ok() && !input.empty() && handler->Continue()) {
     char tag = 0;
@@ -818,11 +818,11 @@ class MemTableInserter : public WriteBatch::Handler {
     return Status::OK();
   }
 
-  CHECKED_STATUS Frontiers(const UserFrontiers& frontiers) override {
+  CHECKED_STATUS Frontiers(const UserFrontiers& frontiers) override {//DHQ: 将batch带的frontier传递入memtable的函数。
     Status seek_status;
-    if (!SeekToColumnFamily(0, &seek_status)) {
+    if (!SeekToColumnFamily(0, &seek_status)) {//DHQ: 找到对应的cf
       return seek_status;
-    }
+    }//DHQ: TODO，是否应该seek回去?
     cf_mems_->GetMemTable()->UpdateFrontiers(frontiers);
     return Status::OK();
   }

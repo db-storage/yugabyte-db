@@ -100,11 +100,11 @@ struct ConsensusOptions {
 
 // After completing bootstrap, some of the results need to be plumbed through
 // into the consensus implementation.
-struct ConsensusBootstrapInfo {
+struct ConsensusBootstrapInfo {//DHQ: 这个Bootstrap，应该是加载或重启后，leader选举后使用
   ConsensusBootstrapInfo();
 
   // The id of the last operation in the log
-  OpId last_id;
+  OpId last_id;//DHQ: log id
 
   // The id of the last committed operation in the log.
   OpId last_committed_id;
@@ -238,7 +238,7 @@ class Consensus : public RefCountedThreadSafe<Consensus> {
   //             |                                     |
   //
   // 1) Caller calls Replicate(), method returns immediately to the caller and
-  //    runs asynchronously.
+  //    runs asynchronously. //DHQ: Replicate是让Leader的上层调用的异步入口，底下的update才是真正的发送消息给peers的
   //
   // 2) Leader replicates the entry to the peers using the consensus
   //    algorithm, proceeds as soon as a majority of voters acknowledges the
@@ -317,7 +317,7 @@ class Consensus : public RefCountedThreadSafe<Consensus> {
   virtual std::string peer_uuid() const = 0;
 
   // Returns the id of the tablet whose updates this consensus instance helps coordinate.
-  virtual std::string tablet_id() const = 0;
+  virtual std::string tablet_id() const = 0; //DHQ: region id
 
   // Returns a copy of the committed state of the Consensus system. Also allows returning the
   // leader lease status captured under the same lock.
@@ -345,7 +345,7 @@ class Consensus : public RefCountedThreadSafe<Consensus> {
 
   // Returns the last OpId (either received or committed, depending on the 'type' argument) that the
   // Consensus implementation knows about.  Primarily used for testing purposes.
-  virtual CHECKED_STATUS GetLastOpId(OpIdType type, OpId* id) {
+  virtual CHECKED_STATUS GetLastOpId(OpIdType type, OpId* id) {//DHQ: 这个对于我们的split可能是有用的。
     return STATUS(NotFound, "Not implemented.");
   }
 
@@ -496,7 +496,7 @@ struct StateChangeContext {
   // it to false in their constructor suffices currently, so marking it const.
   const bool is_config_locked_ = true;
 };
-
+//DHQ: transaction相关，暂时我们应该不需要
 // Factory for replica transactions.
 // An implementation of this factory must be registered prior to consensus
 // start, and is used to create transactions when the consensus implementation receives
@@ -606,7 +606,7 @@ class ConsensusRound : public RefCountedThreadSafe<ConsensusRound> {
 
   // The continuation that will be called once the transaction is
   // deemed committed/aborted by consensus.
-  ConsensusReplicatedCallback replicated_cb_;
+  ConsensusReplicatedCallback replicated_cb_;//DHQ: 这个跟下面的append_cb_，分别用于啥？
 
   // The leader term that this round was submitted in. CheckBoundTerm()
   // ensures that, when it is eventually replicated, the term has not

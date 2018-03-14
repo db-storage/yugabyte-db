@@ -24,7 +24,7 @@ namespace docdb {
 // Raft log entery, whereas user boundary values extract hybrid time from added values.
 // This is important for transactions, because values would have commit time of transaction,
 // but "apply intent" Raft log entries will have a later hybrid time.
-class ConsensusFrontier : public rocksdb::UserFrontier {
+class ConsensusFrontier : public rocksdb::UserFrontier { //DHQ: UserFrontier的一个实现
  public:
   std::unique_ptr<UserFrontier> Clone() const override {
     return std::make_unique<ConsensusFrontier>(*this);
@@ -53,7 +53,7 @@ class ConsensusFrontier : public rocksdb::UserFrontier {
 
 typedef rocksdb::UserFrontiersBase<ConsensusFrontier> ConsensusFrontiers;
 
-inline void set_op_id(const OpId& value, ConsensusFrontiers* frontiers) {
+inline void set_op_id(const OpId& value, ConsensusFrontiers* frontiers) {//DHQ: batch操作时带入，例如 ApplyKeyValueRowOperations
   frontiers->Smallest().set_op_id(value);
   frontiers->Largest().set_op_id(value);
 }

@@ -66,7 +66,7 @@ ConsensusRound::ConsensusRound(Consensus* consensus,
 
 void ConsensusRound::NotifyReplicationFinished(const Status& status) {
   if (PREDICT_FALSE(replicated_cb_.is_null())) return;
-  replicated_cb_.Run(status);
+  replicated_cb_.Run(status); //DHQ: 调用callback,我们需要用这个机制
 }
 
 Status ConsensusRound::CheckBoundTerm(int64_t current_term) const {
