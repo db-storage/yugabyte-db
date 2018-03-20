@@ -443,7 +443,7 @@ void RpcPeerProxy::StartRemoteBootstrap(const StartRemoteBootstrapRequestPB* req
                                         StartRemoteBootstrapResponsePB* response,
                                         rpc::RpcController* controller,
                                         const rpc::ResponseCallback& callback) {
-  consensus_proxy_->StartRemoteBootstrapAsync(*request, response, controller, callback);
+  consensus_proxy_->StartRemoteBootstrapAsync(*request, response, controller, callback); //DHQ: defined in source from kudu
 }
 
 RpcPeerProxy::~RpcPeerProxy() {}

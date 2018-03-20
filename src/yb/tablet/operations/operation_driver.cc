@@ -91,7 +91,7 @@ Status OperationDriver::Init(std::unique_ptr<Operation> operation, DriverType ty
   if (type == consensus::REPLICA) {
     std::lock_guard<simple_spinlock> lock(opid_lock_);
     if (operation_) {
-      op_id_copy_ = operation_->state()->op_id();
+      op_id_copy_ = operation_->state()->op_id();//DHQ: 如果是Replica，(不是Leader)， Operation必须有op_id了
       DCHECK(op_id_copy_.IsInitialized());
     }
     replication_state_ = REPLICATING;
@@ -100,14 +100,14 @@ Status OperationDriver::Init(std::unique_ptr<Operation> operation, DriverType ty
     if (consensus_) {  // sometimes NULL in tests
       // Unretained is required to avoid a refcount cycle.
       consensus::ReplicateMsgPtr replicate_msg = operation_->NewReplicateMsg();
-      mutable_state()->set_consensus_round(
+      mutable_state()->set_consensus_round(//DHQ: 新建立一个Round
         consensus_->NewRound(std::move(replicate_msg),
                              Bind(&OperationDriver::ReplicationFinished, Unretained(this))));
       mutable_state()->consensus_round()->SetAppendCallback(this);
     }
   }
 
-  RETURN_NOT_OK(operation_tracker_->Add(this));
+  RETURN_NOT_OK(operation_tracker_->Add(this));//DHQ: tracker会跟踪这个
 
   return Status::OK();
 }

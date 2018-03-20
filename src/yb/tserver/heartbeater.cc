@@ -93,13 +93,13 @@ Status MasterServiceProxyForHostPort(const HostPort& hostport,
                                      const shared_ptr<rpc::Messenger>& messenger,
                                      gscoped_ptr<MasterServiceProxy>* proxy) {
   std::vector<Endpoint> addrs;
-  RETURN_NOT_OK(hostport.ResolveAddresses(&addrs));
+  RETURN_NOT_OK(hostport.ResolveAddresses(&addrs));//DHQ: hostport里面的可能是域名，解析出来多个ip
   if (addrs.size() > 1) {
     LOG(WARNING) << "Master address '" << hostport.ToString() << "' "
                  << "resolves to " << addrs.size() << " different addresses. Using "
                  << yb::ToString(addrs[0]);
   }
-  proxy->reset(new MasterServiceProxy(messenger, addrs[0]));
+  proxy->reset(new MasterServiceProxy(messenger, addrs[0]));//reset是gscoped_ptr的方法
   return Status::OK();
 }
 
@@ -109,7 +109,7 @@ Status MasterServiceProxyForHostPort(const HostPort& hostport,
 // to avoid having too many dependencies from the header itself.
 //
 // This is basically the "PIMPL" pattern.
-class Heartbeater::Thread {
+class Heartbeater::Thread {//DHQ: 内部的class
  public:
   Thread(const TabletServerOptions& opts, TabletServer* server);
 
@@ -402,8 +402,8 @@ Status Heartbeater::Thread::TryHeartbeat() {
 #endif
 
     // Get the Total SST file sizes and set it in the proto buf
-    std::vector<scoped_refptr<yb::tablet::TabletPeer> > tablet_peers;
-    uint64_t total_file_sizes = 0;
+    std::vector<scoped_refptr<yb::tablet::TabletPeer> > tablet_peers;//DHQ: 这个跟region heartbeat不同，只有个总和之类的
+    uint64_t total_file_sizes = 0;//DHQ: 它的单个tablet状态报告，在TabletStatusPB 中
     server_->tablet_manager()->GetTabletPeers(&tablet_peers);
     for (auto it = tablet_peers.begin(); it != tablet_peers.end(); it++) {
       scoped_refptr<yb::tablet::TabletPeer> tablet_peer = *it;

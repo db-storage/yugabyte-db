@@ -409,7 +409,7 @@ class TableInfo : public RefCountedThreadSafe<TableInfo>,
   // Sorted index of tablet start partition-keys to TabletInfo.
   // The TabletInfo objects are owned by the CatalogManager.
   typedef std::map<std::string, TabletInfo *> TabletInfoMap;
-  TabletInfoMap tablet_map_;
+  TabletInfoMap tablet_map_;//DHQ: 这个就是个map, sting |-> tablet info
 
   // Protects tablet_map_ and pending_tasks_
   mutable simple_spinlock lock_;

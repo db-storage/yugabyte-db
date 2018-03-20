@@ -127,7 +127,7 @@ Status RpcServer::Init(const shared_ptr<Messenger>& messenger) {
 
 Status RpcServer::RegisterService(size_t queue_limit,
                                   unique_ptr<rpc::ServiceIf> service,
-                                  ServicePriority priority) {
+                                  ServicePriority priority) {//DHQ: 这个相当于跟一个thread_pool关联起来
   CHECK(server_state_ == INITIALIZED ||
         server_state_ == BOUND) << "bad state: " << server_state_;
   const scoped_refptr<MetricEntity>& metric_entity = messenger_->metric_entity();
@@ -142,7 +142,7 @@ Status RpcServer::RegisterService(size_t queue_limit,
   }
 
   scoped_refptr<rpc::ServicePool> service_pool =
-    new rpc::ServicePool(queue_limit, thread_pool, std::move(service), metric_entity);
+    new rpc::ServicePool(queue_limit, thread_pool, std::move(service), metric_entity);//DHQ: 这个应该才运行起来了
   RETURN_NOT_OK(messenger_->RegisterService(service_name, service_pool));
   return Status::OK();
 }

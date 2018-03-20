@@ -68,6 +68,7 @@ class ServerStatusPB;
 class RpcServerBase {
  public:
   const RpcServer *rpc_server() const { return rpc_server_.get(); }
+
   const std::shared_ptr<rpc::Messenger>& messenger() const { return messenger_; }
 
   // Return the first RPC address that this server has bound to.
@@ -168,7 +169,7 @@ class RpcAndWebServerBase : public RpcServerBase {
   CHECKED_STATUS Start();
   void Shutdown();
 
-  gscoped_ptr<FsManager> fs_manager_;
+  gscoped_ptr<FsManager> fs_manager_;//DHQ: 这里有个fs_manager_
   gscoped_ptr<Webserver> web_server_;
 
  private:

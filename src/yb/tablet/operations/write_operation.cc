@@ -82,14 +82,14 @@ consensus::ReplicateMsgPtr WriteOperation::NewReplicateMsg() {
   return result;
 }
 
-Status WriteOperation::Prepare() {
+Status WriteOperation::Prepare() {//DHQ: 这个里面啥也没做，后么apply直接搞定了
   TRACE_EVENT0("txn", "WriteOperation::Prepare");
   return Status::OK();
 }
 
 void WriteOperation::DoStart() {
   TRACE("Start()");
-  state()->tablet()->StartOperation(state());
+  state()->tablet()->StartOperation(state()); //DHQ: 实际上里面是设置hybrid time
 }
 
 // FIXME: Since this is called as a void in a thread-pool callback,
@@ -116,7 +116,7 @@ void WriteOperation::PreCommit() {
   TRACE_EVENT0("txn", "WriteOperation::PreCommit");
   TRACE("PRECOMMIT: Releasing row and schema locks");
   // Perform early lock release after we've applied all changes
-  state()->ReleaseDocDbLocks(tablet());
+  state()->ReleaseDocDbLocks(tablet()); //DHQ: state()啥时候获得了lock? 我们应该不需要了
 }
 
 void WriteOperation::Finish(OperationResult result) {

@@ -52,7 +52,7 @@ class TabletServerOptions;
 class Heartbeater {
  public:
   Heartbeater(const TabletServerOptions& options, TabletServer* server);
-  CHECKED_STATUS Start();
+  CHECKED_STATUS Start();//DHQ: 对外接口很少
   CHECKED_STATUS Stop();
 
   // Trigger a heartbeat as soon as possible, even if the normal

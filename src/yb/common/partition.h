@@ -62,7 +62,7 @@ enum YBHashSchema {
 //
 // Partitions consist primarily of a start and end partition key. Every row with
 // a partition key that falls in a Tablet's Partition will be served by that
-// tablet.
+// tablet. DHQ: 这里明确说了Partition主要是start 和 end key
 //
 // In addition to the start and end partition keys, a Partition holds metadata
 // to determine if a scan can prune, or skip, a partition based on the scan's
@@ -87,7 +87,7 @@ class Partition {
   }
 
   // Serializes a partition into a protobuf message.
-  void ToPB(PartitionPB* pb) const;
+  void ToPB(PartitionPB* pb) const; //DHQ: PartitionPB有start_key和end_key
 
   // Deserializes a protobuf message into a partition.
   //
