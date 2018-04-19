@@ -180,7 +180,7 @@ Status Peer::SignalRequest(RequestTriggerMode trigger_mode) {
   return status;
 }
 
-void Peer::SendNextRequest(RequestTriggerMode trigger_mode) {
+void Peer::SendNextRequest(RequestTriggerMode trigger_mode) {//DHQ: 这个是Peer的方法，不是整个consensus_的方法
   DCHECK_LE(sem_.GetValue(), 0) << "Cannot send request";
 
   // The peer has no pending request nor is sending: send the request.
@@ -188,7 +188,7 @@ void Peer::SendNextRequest(RequestTriggerMode trigger_mode) {
   bool last_exchange_successful = false;
   RaftPeerPB::MemberType member_type = RaftPeerPB::UNKNOWN_MEMBER_TYPE;
   int64_t commit_index_before = request_.has_committed_index() ?
-      request_.committed_index().index() : kMinimumOpIdIndex;
+      request_.committed_index().index() : kMinimumOpIdIndex; //DHQ: 实际上可以指定个committed_index?
   Status s = queue_->RequestForPeer(peer_pb_.permanent_uuid(), &request_,
       &replicate_msg_refs_, &needs_remote_bootstrap, &member_type, &last_exchange_successful);
   int64_t commit_index_after = request_.has_committed_index() ?
@@ -214,7 +214,7 @@ void Peer::SendNextRequest(RequestTriggerMode trigger_mode) {
   // If the peer doesn't need remote bootstrap, but it is a PRE_VOTER or PRE_OBSERVER in the config,
   // we need to promote it.
   if (last_exchange_successful &&
-      (member_type == RaftPeerPB::PRE_VOTER || member_type == RaftPeerPB::PRE_OBSERVER)) {
+      (member_type == RaftPeerPB::PRE_VOTER || member_type == RaftPeerPB::PRE_OBSERVER)) {//DHQ: 可以发消息是，premote对方
     if (PREDICT_TRUE(consensus_)) {
       sem_.Release();
       consensus::ChangeConfigRequestPB req;
@@ -229,7 +229,7 @@ void Peer::SendNextRequest(RequestTriggerMode trigger_mode) {
 
       // If another ChangeConfig is being processed, our request will be rejected.
       LOG(INFO) << "Sending ChangeConfig request";
-      auto status = consensus_->ChangeConfig(req, Bind(&DoNothingStatusCB), &error_code);
+      auto status = consensus_->ChangeConfig(req, Bind(&DoNothingStatusCB), &error_code);//DHQ: 调用的是consensus_的方法
       if (PREDICT_FALSE(!status.ok())) {
         LOG(WARNING) << "Unable to change role for peer " << peer_pb_.permanent_uuid()
             << ": " << status.ToString(false);
@@ -314,7 +314,7 @@ void Peer::ProcessResponse() {
   // The queue's handling of the peer response may generate IO (reads against the WAL) and
   // SendNextRequest() may do the same thing. So we run the rest of the response handling logic on
   // our thread pool and not on the reactor thread.
-  Status s = raft_pool_token_->SubmitClosure(Bind(&Peer::DoProcessResponse, Unretained(this)));
+  Status s = raft_pool_token_->SubmitClosure(Bind(&Peer::DoProcessResponse, Unretained(this))); //DHQ: 调用新函数
   if (PREDICT_FALSE(!s.ok())) {
     LOG_WITH_PREFIX_UNLOCKED(WARNING) << "Unable to process peer response: " << s.ToString()
         << ": " << response_.ShortDebugString();
@@ -325,14 +325,14 @@ void Peer::ProcessResponse() {
 void Peer::DoProcessResponse() {
   failed_attempts_ = 0;
 
-  bool more_pending;
-  queue_->ResponseFromPeer(peer_pb_.permanent_uuid(), response_, &more_pending);
+  bool more_pending;//DHQ: 我理解，more_pending大部分时候表示，对方式落后的，需要继续发消息
+  queue_->ResponseFromPeer(peer_pb_.permanent_uuid(), response_, &more_pending);//DHQ: 这个ResponseFromPeer，本地append完成也会调用
 
   // We're OK to read the state_ without a lock here -- if we get a race,
   // the worst thing that could happen is that we'll make one more request before
   // noticing a close.
   if (more_pending && ANNOTATE_UNPROTECTED_READ(state_) != kPeerClosed) {
-    SendNextRequest(RequestTriggerMode::ALWAYS_SEND);
+    SendNextRequest(RequestTriggerMode::ALWAYS_SEND);//DHQ: 对应Peer还落后着，继续发。
   } else {
     sem_.Release();
   }

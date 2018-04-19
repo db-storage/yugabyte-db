@@ -323,7 +323,7 @@ class TabletPeer : public RefCountedThreadSafe<TabletPeer>,
   scoped_refptr<log::Log> log_;
   std::shared_ptr<TabletClass> tablet_;
   std::shared_ptr<rpc::Messenger> messenger_;
-  scoped_refptr<consensus::RaftConsensus> consensus_;
+  scoped_refptr<consensus::RaftConsensus> consensus_; //DHQ: TabletPeer里面包含的是Consensus, Consensus里面会有多个 Consensus::Peer
   gscoped_ptr<TabletStatusListener> status_listener_;
   simple_spinlock prepare_replicate_lock_;
 

@@ -884,7 +884,7 @@ Status RaftConsensus::ReplicateBatch(const ConsensusRounds& rounds) {
     RETURN_NOT_OK(AppendNewRoundsToQueueUnlocked(rounds));
   }
 
-  peer_manager_->SignalRequest(RequestTriggerMode::NON_EMPTY_ONLY);
+  peer_manager_->SignalRequest(RequestTriggerMode::NON_EMPTY_ONLY);//DHQ: Replicate调用这个，然后调用对应Peer的SignalRequest
   RETURN_NOT_OK(ExecuteHook(POST_REPLICATE));
   return Status::OK();
 }
@@ -1981,7 +1981,7 @@ Status RaftConsensus::ChangeConfig(const ChangeConfigRequestPB& req,
     const RaftConfigPB& committed_config = state_->GetCommittedConfigUnlocked();
 
     // Support atomic ChangeConfig requests.
-    if (req.has_cas_config_opid_index()) {
+    if (req.has_cas_config_opid_index()) {//DHQ: 这个atomic，要求上次的commit的opid是一定的。
       if (committed_config.opid_index() != req.cas_config_opid_index()) {
         *error_code = TabletServerErrorPB::CAS_FAILED;
         return STATUS(IllegalState, Substitute("Request specified cas_config_opid_index "
@@ -2043,7 +2043,7 @@ Status RaftConsensus::ChangeConfig(const ChangeConfigRequestPB& req,
         }
         break;
 
-      case CHANGE_ROLE:
+      case CHANGE_ROLE://DHQ: 
         if (server_uuid == peer_uuid()) {
           return STATUS(InvalidArgument,
               Substitute("Cannot change role of  peer $0 from the config because it is the leader. "
@@ -2442,7 +2442,7 @@ Status RaftConsensus::ReplicateConfigChangeUnlocked(const ReplicateMsgPtr& repli
   LOG(INFO) << "Setting replicate pending config " << new_config.ShortDebugString()
             << ", type = " << ChangeConfigType_Name(type);
 
-  RETURN_NOT_OK(state_->SetPendingConfigUnlocked(new_config));
+  RETURN_NOT_OK(state_->SetPendingConfigUnlocked(new_config));//DHQ: 本地保存下Pending的Config
 
   if (type == CHANGE_ROLE && PREDICT_FALSE(FLAGS_inject_delay_leader_change_role_append_secs)) {
     LOG(INFO) << "Adding change role sleep for "
@@ -2452,7 +2452,7 @@ Status RaftConsensus::ReplicateConfigChangeUnlocked(const ReplicateMsgPtr& repli
 
   // Set as pending.
   RETURN_NOT_OK(RefreshConsensusQueueAndPeersUnlocked());
-  auto status = AppendNewRoundToQueueUnlocked(round);
+  auto status = AppendNewRoundToQueueUnlocked(round);//DHQ: 加到queue里面
   if (!status.ok()) {
     // We could just cancel pending config, because there is could be only one pending config.
     auto clear_status = state_->ClearPendingConfigUnlocked();

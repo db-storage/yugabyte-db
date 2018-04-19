@@ -628,7 +628,7 @@ Status ReplicaState::UpdateMajorityReplicatedUnlocked(const OpId& majority_repli
   // then 'committed_index' is simply equal to majority replicated.
   if (last_committed_index_.term() == GetCurrentTermUnlocked()) {
     RETURN_NOT_OK(AdvanceCommittedIndexUnlocked(majority_replicated,
-                                                committed_index_changed));
+                                                committed_index_changed));//DHQ: 这里面可以追到对上层的的callback
     committed_index->CopyFrom(last_committed_index_);
     return Status::OK();
   }
@@ -811,7 +811,7 @@ Status ReplicaState::ApplyPendingOperationsUnlocked(IndexToRoundMap::iterator it
     }
 
     prev_id.CopyFrom(round->id());
-    round->NotifyReplicationFinished(Status::OK());
+    round->NotifyReplicationFinished(Status::OK());//DHQ: Apply时调用这个，最后会调用上层注册的callback
   }
 
   SetLastCommittedIndexUnlocked(committed_index);

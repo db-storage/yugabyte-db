@@ -147,7 +147,7 @@ Status RemoteBootstrapSession::ChangeRole() {
                   << "in bootstrap session " << session_id_;
 
         // If another ChangeConfig is being processed, our request will be rejected.
-        return consensus->ChangeConfig(req, Bind(&DoNothingStatusCB), &error_code);
+        return consensus->ChangeConfig(req, Bind(&DoNothingStatusCB), &error_code);//DHQ: 调用ChangeConfig
       }
       case RaftPeerPB::UNKNOWN_MEMBER_TYPE:
         return STATUS(IllegalState, Substitute("Unable to change role for peer $0 in config for "
@@ -191,7 +191,7 @@ Status RemoteBootstrapSession::Init() {
   // Prevent log GC while we grab log segments and Tablet metadata.
   string anchor_owner_token = Substitute("RemoteBootstrap-$0", session_id_);
   tablet_peer_->log_anchor_registry()->Register(
-      MinimumOpId().index(), anchor_owner_token, &log_anchor_);
+      MinimumOpId().index(), anchor_owner_token, &log_anchor_); //DHQ: anchor log before creating checkpoint
 
   // Read the SuperBlock from disk.
   const scoped_refptr<TabletMetadata>& metadata = tablet_peer_->tablet_metadata();
@@ -219,7 +219,7 @@ Status RemoteBootstrapSession::Init() {
   // based the checkpoint directory files.
   tablet_superblock_.clear_rocksdb_files();
   RETURN_NOT_OK(tablet->CreateCheckpoint(checkpoint_dir_,
-                                         tablet_superblock_.mutable_rocksdb_files()));
+                                         tablet_superblock_.mutable_rocksdb_files()));//DHQ: create checkpoint here
 
   RETURN_NOT_OK(InitSnapshotFiles());
 
@@ -227,8 +227,8 @@ Status RemoteBootstrapSession::Init() {
   // The Log doesn't add the active segment to the log reader's list until
   // a header has been written to it (but it will not have a footer).
   RETURN_NOT_OK(tablet_peer_->log()->GetLogReader()->GetSegmentsSnapshot(&log_segments_));
-  for (const scoped_refptr<ReadableLogSegment>& segment : log_segments_) {
-    RETURN_NOT_OK(OpenLogSegmentUnlocked(segment->header().sequence_number()));
+  for (const scoped_refptr<ReadableLogSegment>& segment : log_segments_) {//DHQ: 把active  segment也打开(让reader可以读到）
+    RETURN_NOT_OK(OpenLogSegmentUnlocked(segment->header().sequence_number())); //DHQ: 持有的是session_lock_，这个Unlocked函数，十本class的，不是log_reader的
   }
   LOG(INFO) << "Got snapshot of " << log_segments_.size() << " log segments";
 

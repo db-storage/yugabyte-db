@@ -758,7 +758,7 @@ void PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
     bool peer_has_prefix_of_log = IsOpInLog(status.last_received());
     if (peer_has_prefix_of_log) {
       // If the latest thing in their log is in our log, we are in sync.
-      peer->last_received = status.last_received();
+      peer->last_received = status.last_received(); //DHQ: Leader保存了每个Peer的next_index, last_received,以便于决定是否还需要发后续消息
       peer->next_index = peer->last_received.index() + 1;
 
     } else if (!OpIdEquals(status.last_received_current_leader(), MinimumOpId())) {
@@ -855,15 +855,15 @@ void PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
       majority_replicated.ht_lease_expiration = HybridTimeLeaseExpirationWatermark();
     }
 
-    UpdateAllReplicatedOpId(&queue_state_.all_replicated_opid);
+    UpdateAllReplicatedOpId(&queue_state_.all_replicated_opid);//DHQ: 注意，All的含义，是所有peer都收到这个log了，可以清除log cache
 
-    log_cache_.EvictThroughOp(queue_state_.all_replicated_opid.index());
+    log_cache_.EvictThroughOp(queue_state_.all_replicated_opid.index());//DHQ: 可以用这个来Evict log cache
 
     UpdateMetrics();
   }
 
   if (mode_copy == Mode::LEADER) {
-    NotifyObserversOfMajorityReplOpChange(majority_replicated);
+    NotifyObserversOfMajorityReplOpChange(majority_replicated);//DHQ: majority搞定，就可以让上面的写请求返回。
   }
 }
 

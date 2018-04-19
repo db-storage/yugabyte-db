@@ -321,7 +321,7 @@ void OperationDriver::HandleFailure(const Status& s) {
   }
 }
 
-void OperationDriver::ReplicationFinished(const Status& status) {
+void OperationDriver::ReplicationFinished(const Status& status) {//DHQ: replication完成时调用
   consensus::OpId op_id_local;
   {
     std::lock_guard<simple_spinlock> op_id_lock(opid_lock_);

@@ -60,7 +60,7 @@ ConsensusRound::ConsensusRound(Consensus* consensus,
 ConsensusRound::ConsensusRound(Consensus* consensus,
                                ReplicateMsgPtr replicate_msg)
     : consensus_(consensus),
-      replicate_msg_(std::move(replicate_msg)) {
+      replicate_msg_(std::move(replicate_msg)) {//DHQ: shared_ptr can also be moved,for efficieny. https://stackoverflow.com/questions/41871115/why-would-i-stdmove-an-stdshared-ptr
   DCHECK_NOTNULL(replicate_msg_.get());
 }
 

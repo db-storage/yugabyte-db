@@ -398,7 +398,7 @@ void RemoteBootstrapServiceImpl::ResetSessionExpirationUnlocked(const std::strin
   expiration.AddDelta(MonoDelta::FromMilliseconds(FLAGS_remote_bootstrap_idle_timeout_ms));
   InsertOrUpdate(&session_expirations_, session_id, expiration);
 }
-
+//DHQ: 为什么要ChangeRole?
 Status RemoteBootstrapServiceImpl::DoEndRemoteBootstrapSessionUnlocked(
         const std::string& session_id,
         bool session_succeeded,

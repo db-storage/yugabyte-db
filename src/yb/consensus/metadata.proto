@@ -45,7 +45,7 @@ import "yb/common/common.proto";
 // A peer in a configuration.
 message RaftPeerPB {
   // The possible roles for peers.
-  enum Role {
+  enum Role {//DHQ: //TODO: Role和MemberType到底啥区别？
     // Indicates this node is a follower in the configuration, i.e. that it participates
     // in majorities and accepts Consensus::Update() calls.
     FOLLOWER = 0;
@@ -68,14 +68,14 @@ message RaftPeerPB {
     UNKNOWN_ROLE = 7;
   };
 
-  enum MemberType {//DHQ: 这个跟我们常见的role是不同的。因为引入了 observer?
+  enum MemberType {//DHQ: 我理解，这个只是在ADD_SERVER时使用的
     UNKNOWN_MEMBER_TYPE = 999;
 
     // Any server added into a running consensus with the intention of becoming a VOTER, should be
     // added as a PRE_VOTER. Such a server stays as a PRE_VOTER (for a specific tablet) till it is
     // remote bootstrapped, after which it is promoted to VOTER. While in this mode, a server will
     // not vote nor try to become a leader.
-    PRE_VOTER = 0;
+    PRE_VOTER = 0;//DHQ: PRE_VOTER，不会vote，也不会尝试变成leader
     VOTER = 1;
 
     // Any server added into a running consensus with the intention of becoming an async replica
@@ -124,7 +124,7 @@ message RaftConfigPB {//DHQ: 包含一个opid_index，因为conf change也是走
 }
 
 // Represents a snapshot of a configuration at a given moment in time.
-message ConsensusStatePB {
+message ConsensusStatePB {//DHQ: 这个又Consensus的当前状态(current_term leader_uuid)，不只是配置。既然是snapshot，应该是临时生成的。
   // A configuration is always guaranteed to have a known term.
   required int64 current_term = 1;
 
@@ -160,7 +160,7 @@ message ConsensusStatePB {
 // This PB is used to serialize all of the persistent state needed for
 // Consensus that is not in the WAL, such as leader election and
 // communication on startup.
-message ConsensusMetadataPB {
+message ConsensusMetadataPB {//DHQ: 这些不在WAL里面，比如leader election和startup时的内容。
   // Last-committed peership.
   required RaftConfigPB committed_config = 1;
 

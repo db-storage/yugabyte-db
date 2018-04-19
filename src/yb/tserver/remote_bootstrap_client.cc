@@ -145,7 +145,7 @@ RemoteBootstrapClient::~RemoteBootstrapClient() {
     WARN_NOT_OK(EndRemoteSession(), "Unable to close remote bootstrap session " + session_id_);
   }
 }
-
+//DHQ: only used when replacing a tablet
 Status RemoteBootstrapClient::SetTabletToReplace(const scoped_refptr<TabletMetadata>& meta,
                                                  int64_t caller_term) {
   CHECK_EQ(tablet_id_, meta->tablet_id());
@@ -202,7 +202,7 @@ Status RemoteBootstrapClient::Start(const string& bootstrap_peer_uuid,
                         << " from remote peer at address " << bootstrap_peer_addr.ToString();
 
   // Set up an RPC proxy for the RemoteBootstrapService.
-  proxy_.reset(new RemoteBootstrapServiceProxy(messenger_, addr));
+  proxy_.reset(new RemoteBootstrapServiceProxy(messenger_, addr));//DHQ: create a new one
 
   BeginRemoteBootstrapSessionRequestPB req;
   req.set_requestor_uuid(permanent_uuid_);
@@ -218,14 +218,14 @@ Status RemoteBootstrapClient::Start(const string& bootstrap_peer_uuid,
                                controller,
                                "Unable to begin remote bootstrap session");
 
-  if (resp.superblock().tablet_data_state() != tablet::TABLET_DATA_READY) {
+  if (resp.superblock().tablet_data_state() != tablet::TABLET_DATA_READY) {//DHQ: TABLET_DATA_READY is set by leader(included in resp)
     Status s = STATUS(IllegalState, "Remote peer (" + bootstrap_peer_uuid + ")" +
                                     " is currently remotely bootstrapping itself!",
                                     resp.superblock().ShortDebugString());
     LOG_WITH_PREFIX(WARNING) << s.ToString();
     return s;
   }
-
+  //DHQ: 获取了rocksdb file列表，snapshot files列表 ，这个应该是log segment(file)
   LOG(INFO) << "Received superblock: " << resp.superblock().ShortDebugString();
   LOG(INFO) << "RocksDB files: " << yb::ToString(resp.superblock().rocksdb_files());
   LOG(INFO) << "Snapshot files: " << yb::ToString(resp.superblock().snapshot_files());
@@ -241,8 +241,8 @@ Status RemoteBootstrapClient::Start(const string& bootstrap_peer_uuid,
   superblock_->clear_rocksdb_dir();
   superblock_->clear_wal_dir();
 
-  superblock_->set_tablet_data_state(tablet::TABLET_DATA_COPYING);
-  wal_seqnos_.assign(resp.wal_segment_seqnos().begin(), resp.wal_segment_seqnos().end());
+  superblock_->set_tablet_data_state(tablet::TABLET_DATA_COPYING);//DHQ: COPYING state
+  wal_seqnos_.assign(resp.wal_segment_seqnos().begin(), resp.wal_segment_seqnos().end()); //DHQ: 注释有：WAL segments available for download
   remote_committed_cstate_.reset(resp.release_initial_committed_cstate());
 
   Schema schema;
