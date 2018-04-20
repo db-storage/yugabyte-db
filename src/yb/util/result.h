@@ -48,7 +48,7 @@ struct ResultTraits<TValue&> {
 };
 
 template<class TValue>
-class Result {
+class Result {//DHQ: 自己定义了Result<>
  public:
   typedef ResultTraits<TValue> Traits;
 

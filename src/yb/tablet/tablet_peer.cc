@@ -139,7 +139,7 @@ TabletPeer::TabletPeer(
     state_(NOT_STARTED),
     status_listener_(new TabletStatusListener(meta)),
     apply_pool_(apply_pool),
-    log_anchor_registry_(new LogAnchorRegistry()),
+    log_anchor_registry_(new LogAnchorRegistry()), //TabletPeer 有个log_anchor_retistry_，不是log层的
     mark_dirty_clbk_(std::move(mark_dirty_clbk)) {}
 
 TabletPeer::~TabletPeer() {
@@ -172,15 +172,15 @@ Status TabletPeer::InitTabletPeer(const shared_ptr<TabletClass> &tablet,
     messenger_ = messenger;
     log_ = log;
 
-    tablet->SetMemTableFlushFilterFactory([log] {
+    tablet->SetMemTableFlushFilterFactory([log] { //DHQ: 这个就是操作Frontiers的地方, log_作为参数传递
       auto index = log->GetLatestEntryOpId().index;
-      return [index] (const rocksdb::MemTable& memtable) -> Result<bool> {//DHQ: Lambda
+      return [index] (const rocksdb::MemTable& memtable) -> Result<bool> {//DHQ: return a Lambda(can be casted to std::function)
         auto frontiers = memtable.Frontiers();
         if (frontiers) {
           const auto& largest = down_cast<const docdb::ConsensusFrontier&>(frontiers->Largest());
           // We can only flush this memtable if all operations written to it have also been written
           // to the log (maybe not synced, if durable_wal_write is disabled, but that's OK).
-          return largest.op_id().index <= index;
+          return largest.op_id().index <= index; //DHQ: 跟已经写log的op_id相比，必须要先写完log才能持久化到rocksdb.实际上不可能在写log之前就发生这个flush
         }//DHQ: 事实上，下面的就是错误，不应该存在的情况。
         // This is a degenerate case that should ideally never occur. An empty memtable got into the
         // list of immutable memtables. We say it is OK to flush it and move on.
@@ -199,7 +199,7 @@ Status TabletPeer::InitTabletPeer(const shared_ptr<TabletClass> &tablet,
 
     std::unique_ptr<ConsensusMetadata> cmeta;
     RETURN_NOT_OK(ConsensusMetadata::Load(meta_->fs_manager(), tablet_id_,
-                                          meta_->fs_manager()->uuid(), &cmeta));
+                                          meta_->fs_manager()->uuid(), &cmeta));//DHQ: 需要load一些数据
 
     consensus_ = RaftConsensus::Create(
         options,
@@ -213,7 +213,7 @@ Status TabletPeer::InitTabletPeer(const shared_ptr<TabletClass> &tablet,
         tablet_->mem_tracker(),
         mark_dirty_clbk_,
         tablet_->table_type(),
-        std::bind(&Tablet::LostLeadership, tablet.get()),
+        std::bind(&Tablet::LostLeadership, tablet.get()),//DHQ: 有个LostLeadership注册
         raft_pool);
 
     auto ht_lease_provider = [this](MicrosTime min_allowed, MonoTime deadline) {
@@ -240,14 +240,14 @@ Status TabletPeer::InitTabletPeer(const shared_ptr<TabletClass> &tablet,
       return mvcc_manager->SafeTime(ht_lease);
     });
 
-    consensus_->SetMajorityReplicatedListener([mvcc_manager, ht_lease_provider] {
+    consensus_->SetMajorityReplicatedListener([mvcc_manager, ht_lease_provider] {//DHQ: Lambda
       auto ht_lease = ht_lease_provider(0, MonoTime::kMax);
       if (ht_lease) {
         mvcc_manager->UpdatePropagatedSafeTimeOnLeader(ht_lease);
       }
     });
 
-    prepare_thread_ = std::make_unique<Preparer>(consensus_.get(), tablet_prepare_pool);
+    prepare_thread_ = std::make_unique<Preparer>(consensus_.get(), tablet_prepare_pool);//DHQ: 初始化prepare_thread_
   }
 
   RETURN_NOT_OK(prepare_thread_->Start());
@@ -288,7 +288,7 @@ Status TabletPeer::Start(const ConsensusBootstrapInfo& bootstrap_info) {
   auto context =
       std::make_shared<StateChangeContext>(StateChangeReason::TABLET_PEER_STARTED, false);
   // Because we changed the tablet state, we need to re-report the tablet to the master.
-  mark_dirty_clbk_.Run(context);
+  mark_dirty_clbk_.Run(context);//TODO: 这个或许我们需要使用下？ 触发我们的HB?
 
   return Status::OK();
 }
@@ -430,7 +430,7 @@ Status TabletPeer::SubmitWrite(std::unique_ptr<WriteOperationState> state) {
   RETURN_NOT_OK(CheckRunning());
 
   HybridTime restart_read_ht;
-  RETURN_NOT_OK(tablet_->AcquireLocksAndPerformDocOperations(operation->state(), &restart_read_ht));
+  RETURN_NOT_OK(tablet_->AcquireLocksAndPerformDocOperations(operation->state(), &restart_read_ht)); //DHQ: //TODO: 这里获取的lock，啥时候释放？
   // If a restart read is required, then we return this fact to caller and don't perform the write
   // operation.
   if (restart_read_ht.is_valid()) {
@@ -726,7 +726,7 @@ Status TabletPeer::StartReplicaOperation(
   if (propagated_safe_time) {
     driver->SetPropagatedSafeTime(propagated_safe_time, tablet_->mvcc_manager());
   }
-  driver->ExecuteAsync();
+  driver->ExecuteAsync();//DHQ: 启动执行
   return Status::OK();
 }
 
@@ -767,12 +767,12 @@ scoped_refptr<consensus::Consensus> TabletPeer::shared_consensus() const {
   return consensus_;
 }
 
-Result<OperationDriverPtr> TabletPeer::NewLeaderOperationDriver(
+Result<OperationDriverPtr> TabletPeer::NewLeaderOperationDriver(//DHQ: leader的
     std::unique_ptr<Operation> operation) {
   return NewOperationDriver(std::move(operation), consensus::LEADER);
 }
 
-Result<OperationDriverPtr> TabletPeer::NewReplicaOperationDriver(
+Result<OperationDriverPtr> TabletPeer::NewReplicaOperationDriver(//DHQ: follower的
     std::unique_ptr<Operation> operation) {
   return NewOperationDriver(std::move(operation), consensus::REPLICA);
 }
@@ -818,7 +818,7 @@ uint64_t TabletPeer::OnDiskSize() const {
   }
 
   if (tablet_) {
-    ret += tablet_->GetTotalSSTFileSizes();
+    ret += tablet_->GetTotalSSTFileSizes();//DHQ: 获取SST总大小的
   }
 
   if (log_) {

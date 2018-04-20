@@ -104,7 +104,7 @@ struct ConsensusBootstrapInfo {//DHQ: 这个Bootstrap，应该是加载或重启
   ConsensusBootstrapInfo();
 
   // The id of the last operation in the log
-  OpId last_id;//DHQ: log id
+  OpId last_id;//DHQ: term + index
 
   // The id of the last committed operation in the log.
   OpId last_committed_id;

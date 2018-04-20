@@ -797,7 +797,7 @@ Status Tablet::AcquireLocksAndPerformDocOperations(
          key_value_write_request->write_batch().kv_pairs_size() == 0)
       << "Expect to be holding locks for a non-zero number of write operations: "
       << key_value_write_request->write_batch().DebugString();
-  state->ReplaceDocDBLocks(std::move(locks_held));
+  state->ReplaceDocDBLocks(std::move(locks_held));//DHQ: move进去了？
 
   DCHECK_EQ(key_value_write_request->redis_write_batch_size(), 0)
       << "Redis write batch not empty in key-value batch";

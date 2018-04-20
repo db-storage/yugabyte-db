@@ -329,7 +329,7 @@ class TabletPeer : public RefCountedThreadSafe<TabletPeer>,
 
   // Lock protecting state_ as well as smart pointers to collaborating
   // classes such as tablet_ and consensus_.
-  mutable simple_spinlock lock_;
+  mutable simple_spinlock lock_; //DHQ: 保护对象已经明确说了
 
   // Lock taken during Init/Shutdown which ensures that only a single thread
   // attempts to perform major lifecycle operations (Init/Shutdown) at once.
@@ -337,9 +337,9 @@ class TabletPeer : public RefCountedThreadSafe<TabletPeer>,
   // We don't just use lock_ since the lifecycle operations may take a while
   // and we'd like other threads to be able to quickly poll the state_ variable
   // during them in order to reject RPCs, etc.
-  mutable simple_spinlock state_change_lock_;
+  mutable simple_spinlock state_change_lock_; //DHQ: 另外一个lock，拿两个lock时，这个先拿
 
-  std::unique_ptr<Preparer> prepare_thread_;
+  std::unique_ptr<Preparer> prepare_thread_;//DHQ: 单独的prepare_thread
 
   // Pool that executes apply tasks for transactions. This is a multi-threaded
   // pool, constructor-injected by either the Master (for system tables) or
@@ -356,7 +356,7 @@ class TabletPeer : public RefCountedThreadSafe<TabletPeer>,
   // or leader via the consensus round completion callback of NonTxRoundReplicationFinished.
   // Hence this should be a relatively lightweight function - e.g., update in-memory only state
   // and defer any other heavy duty operations to a thread pool.
-  Callback<void(std::shared_ptr<consensus::StateChangeContext> context)> mark_dirty_clbk_;
+  Callback<void(std::shared_ptr<consensus::StateChangeContext> context)> mark_dirty_clbk_; //DHQ: 这个实际上是TSTabletManager的函数，共TabletPeer调用的
 
   // List of maintenance operations for the tablet that need information that only the peer
   // can provide.
