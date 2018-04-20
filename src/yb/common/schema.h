@@ -79,7 +79,7 @@ template<char digit1, char... digits>
 struct ColumnIdHelper {
   typedef ColumnIdHelper<digit1> Current;
   typedef ColumnIdHelper<digits...> Next;
-  static constexpr int mul = Next::mul * 10;
+  static constexpr int mul = Next::mul * 10; //DHQ: constexpr，是指可以在编译时计算出结果的.感觉在递归调用
   static constexpr int value = Current::value * mul + Next::value;
   static_assert(value <= std::numeric_limits<int32_t>::max(), "Too big constant");
 };
@@ -101,7 +101,7 @@ struct ColumnId {
   constexpr explicit ColumnId(ColumnIdHelper<digits...>) : t(ColumnIdHelper<digits...>::value) {}
 
   ColumnId() : t() {}
-  constexpr ColumnId(const ColumnId& t_) : t(t_.t) {}
+  constexpr ColumnId(const ColumnId& t_) : t(t_.t) {}//DHQ: copy里面的t
   ColumnId& operator=(const ColumnId& rhs) { t = rhs.t; return *this; }
   ColumnId& operator=(const ColumnIdRep& rhs) { DCHECK_GE(rhs, 0); t = rhs; return *this; }
   operator const ColumnIdRep() const { return t; }
@@ -280,7 +280,7 @@ class ColumnSchema {
   // For example, "STRING NOT NULL".
   string TypeToString() const;
 
-  bool EqualsType(const ColumnSchema &other) const {
+  bool EqualsType(const ColumnSchema &other) const {//DHQ: 不比较名字，之比较Type
     return is_nullable_ == other.is_nullable_ &&
            is_hash_key_ == other.is_hash_key_ &&
            sorting_type_ == other.sorting_type_ &&
@@ -475,7 +475,7 @@ class TableProperties {
 // passing by pointer or reference, and functions that create new
 // Schemas should generally prefer taking a Schema pointer and using
 // Schema::swap() or Schema::Reset() rather than returning by value.
-class Schema {
+class Schema {//DHQ: 多个ColumnSchema构成Schema
  public:
 
   static const int kColumnNotFound = -1;
@@ -558,13 +558,13 @@ class Schema {
   // This size does not include any indirected (variable length) data (eg strings)
   size_t byte_size() const {
     DCHECK(initialized());
-    return col_offsets_.back();
+    return col_offsets_.back();//DHQ: col_offsets_记录了各个col的offset，back()是下一个的？
   }
 
   // Return the number of bytes needed to represent
   // only the key portion of this schema.
   size_t key_byte_size() const {
-    return col_offsets_[num_key_columns_];
+    return col_offsets_[num_key_columns_];//DHQ: 有key的应该放在前面，才能这么用
   }
 
   // Return the number of columns in this schema
@@ -735,14 +735,14 @@ class Schema {
   template<DataType Type, class RowType>
   const typename DataTypeTraits<Type>::cpp_type *
   ExtractColumnFromRow(const RowType& row, size_t idx) const {
-    DCHECK_SCHEMA_EQ(*this, *row.schema());
+    DCHECK_SCHEMA_EQ(*this, *row.schema());//DHQ: row里面也有schema
     const ColumnSchema& col_schema = cols_[idx];
     DCHECK_LT(idx, cols_.size());
-    DCHECK_EQ(col_schema.type_info()->type(), Type);
+    DCHECK_EQ(col_schema.type_info()->type(), Type); //DHQ: Type是指定的参数
 
     const void *val;
     if (col_schema.is_nullable()) {
-      val = row.nullable_cell_ptr(idx);
+      val = row.nullable_cell_ptr(idx);//DHQ: 是nullable的，分别保存
     } else {
       val = row.cell_ptr(idx);
     }
@@ -972,7 +972,7 @@ class Schema {
   // If no such column exists, returns kColumnNotFound.
   int find_column_by_id(ColumnId id) const {
     DCHECK(cols_.empty() || has_column_ids());
-    int ret = id_to_index_[id];
+    int ret = id_to_index_[id]; //DHQ: map
     if (ret == -1) {
       return kColumnNotFound;
     }
