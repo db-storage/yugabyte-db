@@ -75,17 +75,17 @@ using std::vector;
 using std::unordered_map;
 using std::unordered_set;
 
-template<char digit1, char... digits>
+template<char digit1, char... digits> //DHQ: 实际上这里不需要这种结构体，搞复杂了。参见笔记中template literal operator
 struct ColumnIdHelper {
   typedef ColumnIdHelper<digit1> Current;
   typedef ColumnIdHelper<digits...> Next;
-  static constexpr int mul = Next::mul * 10; //DHQ: constexpr，是指可以在编译时计算出结果的.感觉在递归调用
+  static constexpr int mul = Next::mul * 10; //DHQ: constexpr，是指可以在编译时计算出结果的.
   static constexpr int value = Current::value * mul + Next::value;
   static_assert(value <= std::numeric_limits<int32_t>::max(), "Too big constant");
 };
-
+//DHQ: 这个相当于递归到1的时候
 template<char digit>
-struct ColumnIdHelper<digit> {
+struct ColumnIdHelper<digit> {//DHQ: 同名结构体，但是带个<digit>
   static_assert(digit >= '0' && digit <= '9', "Only digits is allowed");
   static constexpr int value = digit - '0';
   static constexpr int mul = 1;
@@ -153,7 +153,7 @@ static const ColumnId kFirstColumnId(10);
 #endif
 
 template<char... digits>
-ColumnId operator"" _ColId() {
+ColumnId operator"" _ColId() {//DHQ: 书里面的template literal operator. 我觉得应该在前面加上constexpr
   return ColumnId(ColumnIdHelper<digits...>());
 }
 

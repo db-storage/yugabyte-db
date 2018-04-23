@@ -63,7 +63,7 @@ namespace consensus {
 // Class that coordinates access to the replica state (independently of Role).
 // This has a 1-1 relationship with RaftConsensus and is essentially responsible for
 // keeping state and checking if state changes are viable.
-//
+// DHQ: 跟RaftConsensus 1-1,每个Consensus里面有个ReplicaState
 // Note that, in the case of a LEADER role, there are two configuration states that
 // that are tracked: a pending and a committed configuration. The "active" state is
 // considered to be the pending configuration if it is non-null, otherwise the
@@ -75,7 +75,7 @@ namespace consensus {
 // tries to push a new configuration to the peers. Once that configuration is
 // pushed to a majority of the cluster, it is considered committed and the
 // replica flushes that configuration to disk as the committed configuration.
-//
+// DHQ: Leader在当选后，会push pending configuration，然后让其变成committed。这个为什么需要呢？每次当选，都是变化？ RaftConfigPB里面实际上还包含了Role，这个肯定是变化的
 // Each time an operation is to be performed on the replica the appropriate LockFor*()
 // method should be called. The LockFor*() methods check that the replica is in the
 // appropriate state to perform the requested operation and returns the lock or return
@@ -83,7 +83,7 @@ namespace consensus {
 //
 // All state reading/writing methods acquire the lock, unless suffixed by "Unlocked", in
 // which case a lock should be obtained prior to calling them.
-class ReplicaState {
+class ReplicaState {//DHQ: 这个应该是对应Consensus的多个Replica的状态，不是一个Replica
  public:
   enum State {
     // State after the replica is built.

@@ -242,7 +242,7 @@ class RaftConsensus : public Consensus,
 
   // As a follower, start a consensus round not associated with a Operation.
   // Only virtual and protected for mocking purposes.
-  virtual CHECKED_STATUS StartConsensusOnlyRoundUnlocked(const ReplicateMsgPtr& msg);
+  virtual CHECKED_STATUS StartConsensusOnlyRoundUnlocked(const ReplicateMsgPtr& msg);//DHQ: 测试用
 
   // Assuming we are the leader, wait until we have a valid leader lease (i.e. the old leader's
   // lease has expired, and we have replicated a new lease that has not expired yet).

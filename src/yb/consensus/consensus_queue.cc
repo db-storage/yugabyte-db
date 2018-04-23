@@ -366,7 +366,7 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
         MonoTime::Now().GetDeltaSince(peer->last_successful_communication_time);
   }
 
-  if (unreachable_time.ToSeconds() > FLAGS_follower_unavailable_considered_failed_sec) {
+  if (unreachable_time.ToSeconds() > FLAGS_follower_unavailable_considered_failed_sec) {//DHQ: 认为leader已经faile了
     if (CountVoters(*queue_state_.active_config) > 2) {
       // We never drop from 2 to 1 automatically, at least for now. We may want
       // to revisit this later, we're just being cautious with this.

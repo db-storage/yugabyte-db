@@ -623,7 +623,7 @@ Status RaftConsensus::StepDown(const LeaderStepDownRequestPB* req, LeaderStepDow
   // If a new leader is nominated, find it among peers to send RunLeaderElection request.
   // See https://ramcloud.stanford.edu/~ongaro/thesis.pdf, section 3.10 for this mechanism
   // to transfer the leadership.
-  if (req->has_new_leader_uuid()) {
+  if (req->has_new_leader_uuid()) {//DHQ: 让对方发起选举。。
     new_leader_uuid = req->new_leader_uuid();
     if (!queue_->CanPeerBecomeLeader(new_leader_uuid)) {
       resp->mutable_error()->set_code(TabletServerErrorPB::LEADER_NOT_READY_TO_STEP_DOWN);
@@ -875,7 +875,7 @@ Status RaftConsensus::ReplicateBatch(const ConsensusRounds& rounds) {
                                                 << round->replicate_msg()->DebugString();
     }
 #endif
-    RETURN_NOT_OK(state_->LockForReplicate(&lock));
+    RETURN_NOT_OK(state_->LockForReplicate(&lock));//DHQ: Conesensus与state是一一对应的
     auto current_term = state_->GetCurrentTermUnlocked();
 
     for (const auto& round : rounds) {

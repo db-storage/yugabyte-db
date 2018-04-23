@@ -100,7 +100,7 @@ struct ConsensusOptions {
 
 // After completing bootstrap, some of the results need to be plumbed through
 // into the consensus implementation.
-struct ConsensusBootstrapInfo {//DHQ: 这个Bootstrap，应该是加载或重启后，leader选举后使用
+struct ConsensusBootstrapInfo {//DHQ: 这个Bootstrap，应该是加载或重启后，replay raftlog使用的。不是remote bootstrap使用
   ConsensusBootstrapInfo();
 
   // The id of the last operation in the log
@@ -119,7 +119,7 @@ struct ConsensusBootstrapInfo {//DHQ: 这个Bootstrap，应该是加载或重启
  private:
   DISALLOW_COPY_AND_ASSIGN(ConsensusBootstrapInfo);
 };
-
+//DHQ: 可以在 Append完成后，调用这个callback。比如在这时设置txn的ts,启动MVCC txn
 // Used for a callback that sets a transaction's timestamp and starts the MVCC transaction for
 // YB tables. In YB tables, we assign timestamp at the time of appending an entry to the Raft
 // log, so that timestamps always keep increasing in the log, unless entries are being overwritten.
@@ -131,7 +131,7 @@ class ConsensusAppendCallback {
 };
 
 YB_STRONGLY_TYPED_BOOL(TEST_SuppressVoteRequest);
-
+//DHQ: 说了log需要在Consensus之前被释放。。
 // The external interface for a consensus peer.
 //
 // Note: Even though Consensus points to Log, it needs to be destroyed
@@ -156,7 +156,7 @@ class Consensus : public RefCountedThreadSafe<Consensus> {
   virtual bool IsRunning() const = 0;
 
   // Emulates a leader election by simply making this peer leader.
-  virtual CHECKED_STATUS EmulateElection() = 0;
+  virtual CHECKED_STATUS EmulateElection() = 0;//DHQ: 自己当leader
 
   // Triggers a leader election. Start an election now or start a pending election. A pending
   // election will be started pending upon the opid having been committed to this peer's log.
@@ -177,7 +177,7 @@ class Consensus : public RefCountedThreadSafe<Consensus> {
   // Not-ready status means that the leader is not ready to serve up-to-date read requests.
   enum class LeaderStatus {
     NOT_LEADER,
-    LEADER_BUT_NOT_READY,
+    LEADER_BUT_NOT_READY,//DHQ: 还没有ready，这时候不能服务。可能正在做peer间sync?
     LEADER_AND_READY
   };
 
@@ -191,7 +191,7 @@ class Consensus : public RefCountedThreadSafe<Consensus> {
   CHECKED_STATUS StartElection(
       ElectionMode mode,
       const bool pending_commit = false,
-      const OpId& must_be_committed_opid = OpId::default_instance(),
+      const OpId& must_be_committed_opid = OpId::default_instance(), //DHQ: 这个对我们是有用的？ split_start_log_id?
       const std::string& originator_uuid = std::string(),
       TEST_SuppressVoteRequest suppress_vote_request = TEST_SuppressVoteRequest::kFalse) {
     return DoStartElection(
@@ -205,7 +205,7 @@ class Consensus : public RefCountedThreadSafe<Consensus> {
 
   // Implement a LeaderStepDown() request.
   virtual CHECKED_STATUS StepDown(const LeaderStepDownRequestPB* req,
-                                  LeaderStepDownResponsePB* resp) {
+                                  LeaderStepDownResponsePB* resp) {//DHQ: Raft里已经实现了StepDown。对于我们处理split，还是有用的。让指定的Peer成为leader
     return STATUS(NotSupported, "Not implemented.");
   }
 
@@ -512,13 +512,13 @@ struct StateChangeContext {
 //   replica Consensus instance does not wait for Prepare() to finish).
 class ReplicaOperationFactory {
  public:
-  virtual CHECKED_STATUS StartReplicaOperation(
+  virtual CHECKED_STATUS StartReplicaOperation(//DHQ: Replica,不是Replicate.这是 follower的操作
       const ConsensusRoundPtr& context, HybridTime propagated_safe_time) = 0;
   virtual void SetPropagatedSafeTime(HybridTime ht) = 0;
 
   virtual ~ReplicaOperationFactory() {}
 };
-
+//DHQ: LEADER side的 context
 // Context for a consensus round on the LEADER side, typically created as an
 // out-parameter of Consensus::Append.
 // This class is ref-counted because we want to ensure it stays alive for the

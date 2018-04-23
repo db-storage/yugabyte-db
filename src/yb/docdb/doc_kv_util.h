@@ -77,7 +77,7 @@ inline void AppendBigEndianUInt32(uint32_t u, std::string* dest) {
 // Encode and append the given signed 64-bit integer to the destination string holding a RocksDB
 // key being constructed. We are flipping the sign bit so that negative numbers sort before positive
 // ones.
-inline void AppendInt64ToKey(int64_t val, std::string* dest) {
+inline void AppendInt64ToKey(int64_t val, std::string* dest) {//DHQ: 实际上把代表正负数的位置做了取反，这样就可以二进制比较了.但是并没有跟浮点数之类直接比较。
   char buf[sizeof(uint64_t)];
   // Flip the sign bit so that negative values sort before positive ones when compared as
   // big-endian byte sequences.
