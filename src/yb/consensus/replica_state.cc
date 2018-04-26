@@ -551,7 +551,7 @@ Status ReplicaState::AddPendingOperation(const scoped_refptr<ConsensusRound>& ro
   // Both of them are safe, since they don't affect user reads or writes.
   if (GetActiveRoleUnlocked() == RaftPeerPB::LEADER &&
       op_type != NO_OP &&
-      op_type != CHANGE_CONFIG_OP) {
+      op_type != CHANGE_CONFIG_OP) {//DHQ: Leader才走这个
     auto lease_status = GetHybridTimeLeaseStatusAtUnlocked(
         HybridTime(round->replicate_msg()->hybrid_time()).GetPhysicalValueMicros());
     static_assert(LeaderLeaseStatus_ARRAYSIZE == 3, "Please update logic below to adapt new state");

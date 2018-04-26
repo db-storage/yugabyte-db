@@ -124,7 +124,7 @@ message RaftConfigPB {//DHQ: 包含一个opid_index，因为conf change也是走
 }
 
 // Represents a snapshot of a configuration at a given moment in time.
-message ConsensusStatePB {//DHQ: 这个又Consensus的当前状态(current_term leader_uuid)，不只是配置。既然是snapshot，应该是临时生成的。
+message ConsensusStatePB {//DHQ: 这个有Consensus的当前状态(current_term leader_uuid)，不只是配置。既然是snapshot，应该是临时生成的。
   // A configuration is always guaranteed to have a known term.
   required int64 current_term = 1;
 
@@ -160,7 +160,7 @@ message ConsensusStatePB {//DHQ: 这个又Consensus的当前状态(current_term 
 // This PB is used to serialize all of the persistent state needed for
 // Consensus that is not in the WAL, such as leader election and
 // communication on startup.
-message ConsensusMetadataPB {//DHQ: 这些不在WAL里面，比如leader election和startup时的内容。
+message ConsensusMetadataPB {//DHQ: 这些不在WAL里面，比如leader election和startup时的内容。这个是要写盘的
   // Last-committed peership.
   required RaftConfigPB committed_config = 1;
 

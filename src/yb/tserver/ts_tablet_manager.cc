@@ -476,7 +476,7 @@ Status TSTabletManager::CreateNewTablet(
     TableType table_type,
     const Schema &schema,
     const PartitionSchema &partition_schema,
-    RaftConfigPB config,
+    RaftConfigPB config, //DHQ: config就是Raft的
     scoped_refptr<TabletPeer> *tablet_peer) {
   CHECK_EQ(state(), MANAGER_RUNNING);
   CHECK(IsRaftConfigMember(server_->instance_pb().permanent_uuid(), config));
@@ -533,7 +533,7 @@ Status TSTabletManager::CreateNewTablet(
 
   // We must persist the consensus metadata to disk before starting a new
   // tablet's TabletPeer and Consensus implementation.
-  std::unique_ptr<ConsensusMetadata> cmeta;
+  std::unique_ptr<ConsensusMetadata> cmeta;//DHQ: 这个不是PB
   RETURN_NOT_OK_PREPEND(ConsensusMetadata::Create(fs_manager_, tablet_id, fs_manager_->uuid(),
                                                   config, consensus::kMinimumTerm, &cmeta),
                         "Unable to create new ConsensusMeta for tablet " + tablet_id);
@@ -615,7 +615,7 @@ Status HandleReplacingStaleTablet(
 
   return Status::OK();
 }
-
+//DHQ: 这个不只是Start，实际上完成了整个过程，下载文件等。
 Status TSTabletManager::StartRemoteBootstrap(const StartRemoteBootstrapRequestPB& req) {
   const string& tablet_id = req.tablet_id();
   const string& bootstrap_peer_uuid = req.bootstrap_peer_uuid();
@@ -729,7 +729,7 @@ scoped_refptr<TabletPeer> TSTabletManager::CreateAndRegisterTabletPeer(
       new TabletPeerClass(meta,
                           local_peer_pb_,
                           apply_pool_.get(),
-                          Bind(&TSTabletManager::ApplyChange,
+                          Bind(&TSTabletManager::ApplyChange,//DHQ: Listener
                                Unretained(this),
                                meta->tablet_id())));
   RegisterTablet(meta->tablet_id(), tablet_peer, mode);
@@ -877,7 +877,7 @@ Status TSTabletManager::OpenTabletMeta(const string& tablet_id,
   metadata->swap(meta);
   return Status::OK();
 }
-
+//DHQ: 加载/CreateNewTablet时调用
 void TSTabletManager::OpenTablet(const scoped_refptr<TabletMetadata>& meta,
                                  const scoped_refptr<TransitionInProgressDeleter>& deleter) {
   string tablet_id = meta->tablet_id();
@@ -906,12 +906,12 @@ void TSTabletManager::OpenTablet(const scoped_refptr<TabletMetadata>& meta,
         scoped_refptr<server::Clock>(server_->clock()),
         server_->mem_tracker(),
         metric_registry_,
-        tablet_peer->status_listener(),
+        tablet_peer->status_listener(),//DHQ:应该对应 ApplyChange
         tablet_peer->log_anchor_registry(),
         tablet_options_,
         tablet_peer.get(),
         tablet_peer.get()};
-    s = BootstrapTablet(data, &tablet, &log, &bootstrap_info);
+    s = BootstrapTablet(data, &tablet, &log, &bootstrap_info);//DHQ: Tablet 的 bootstrap
     if (!s.ok()) {
       LOG(ERROR) << kLogPrefix << "Tablet failed to bootstrap: "
                  << s.ToString();

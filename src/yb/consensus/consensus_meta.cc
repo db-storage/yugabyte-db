@@ -197,7 +197,7 @@ void ConsensusMetadata::MergeCommittedConsensusStatePB(const ConsensusStatePB& c
   clear_pending_config();
 }
 
-Status ConsensusMetadata::Flush() {//DHQ: 这个应该是写的文件，而不是用kv形式。
+Status ConsensusMetadata::Flush() {//DHQ: 这个写的文件，而不是用kv形式。
   SCOPED_LOG_SLOW_EXECUTION_PREFIX(WARNING, 500, LogPrefix(), "flushing consensus metadata");
   // Sanity test to ensure we never write out a bad configuration.
   RETURN_NOT_OK_PREPEND(VerifyRaftConfig(pb_.committed_config(), COMMITTED_QUORUM),
@@ -216,7 +216,7 @@ Status ConsensusMetadata::Flush() {//DHQ: 这个应该是写的文件，而不�
   }
 
   string meta_file_path = fs_manager_->GetConsensusMetadataPath(tablet_id_);
-  RETURN_NOT_OK_PREPEND(pb_util::WritePBContainerToPath(
+  RETURN_NOT_OK_PREPEND(pb_util::WritePBContainerToPath(//DHQ: 写的pb_，为ConsensusMetadataPB
       fs_manager_->env(), meta_file_path, pb_,
       pb_util::OVERWRITE,
       // Always fsync the consensus metadata.
@@ -237,14 +237,14 @@ ConsensusMetadata::ConsensusMetadata(FsManager* fs_manager,
       active_role_(RaftPeerPB::UNKNOWN_ROLE),
       on_disk_size_(0) {}
 
-std::string ConsensusMetadata::LogPrefix() const {
+std::string ConsensusMetadata::LogPrefix() const {//DHQ: 应该是运行日志的prefix
   return Substitute("T $0 P $1: ", tablet_id_, peer_uuid_);
 }
 
 void ConsensusMetadata::UpdateActiveRole() {
   ConsensusStatePB cstate = ToConsensusStatePB(CONSENSUS_CONFIG_ACTIVE);
   RaftPeerPB::Role old_role = active_role_;
-  active_role_ = GetConsensusRole(peer_uuid_, cstate);
+  active_role_ = GetConsensusRole(peer_uuid_, cstate);//DHQ: 修正active_role_
   LOG_WITH_PREFIX(INFO) << "Updating active role from " << RaftPeerPB::Role_Name(old_role)
                         << " to " << RaftPeerPB::Role_Name(active_role_)
                         << ". Consensus state: " << cstate.ShortDebugString()

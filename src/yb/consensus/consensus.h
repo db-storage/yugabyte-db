@@ -114,7 +114,7 @@ struct ConsensusBootstrapInfo {//DHQ: 这个Bootstrap，应该是加载或重启
   // to potentially commit them.
   //
   // These are owned by the ConsensusBootstrapInfo instance.
-  ReplicateMsgs orphaned_replicates;
+  ReplicateMsgs orphaned_replicates;//DHQ: Leader刚当选是否也需要这个？
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConsensusBootstrapInfo);
@@ -293,7 +293,7 @@ class Consensus : public RefCountedThreadSafe<Consensus> {
   // stringified Status message.
   virtual CHECKED_STATUS Update(
       ConsensusRequestPB* request,
-      ConsensusResponsePB* response) = 0;
+      ConsensusResponsePB* response) = 0;//DHQ: 这个说是等于AppendEntries
 
   // Messages sent from CANDIDATEs to voting peers to request their vote
   // in leader election.
@@ -321,7 +321,7 @@ class Consensus : public RefCountedThreadSafe<Consensus> {
 
   // Returns a copy of the committed state of the Consensus system. Also allows returning the
   // leader lease status captured under the same lock.
-  virtual ConsensusStatePB ConsensusState(
+  virtual ConsensusStatePB ConsensusState(//DHQ: State与Config是两码事
       ConsensusConfigType type,
       LeaderLeaseStatus* leader_lease_status = nullptr) const = 0;
 
@@ -510,7 +510,7 @@ struct StateChangeContext {
 //   instance immediately stores the ReplicateMsg in the Log. Once the replicate
 //   message is stored in stable storage an ACK is sent to the leader (i.e. the
 //   replica Consensus instance does not wait for Prepare() to finish).
-class ReplicaOperationFactory {
+class ReplicaOperationFactory {//DHQ: TabletPeer继承此类，实现了方法
  public:
   virtual CHECKED_STATUS StartReplicaOperation(//DHQ: Replica,不是Replicate.这是 follower的操作
       const ConsensusRoundPtr& context, HybridTime propagated_safe_time) = 0;

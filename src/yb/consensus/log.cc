@@ -802,7 +802,7 @@ void Log::GetGCableDataSize(int64_t min_op_idx, int64_t* total_size) const {
   SegmentSequence segments_to_delete;
   *total_size = 0;
   {
-    boost::shared_lock<rw_spinlock> read_lock(state_lock_.get_lock());
+    boost::shared_lock<rw_spinlock> read_lock(state_lock_.get_lock()); //DHQ: shared，记为read_lock
     CHECK_EQ(kLogWriting, log_state_);
     Status s = GetSegmentsToGCUnlocked(min_op_idx, &segments_to_delete);
 

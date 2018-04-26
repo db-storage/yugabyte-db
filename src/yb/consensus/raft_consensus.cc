@@ -240,7 +240,7 @@ scoped_refptr<RaftConsensus> RaftConsensus::Create(
                            local_peer_pb,
                            options.tablet_id,
                            clock,
-                           raft_pool->NewToken(ThreadPool::ExecutionMode::SERIAL)));
+                           raft_pool->NewToken(ThreadPool::ExecutionMode::SERIAL)));//DHQ: 从thread_pool创建一个新的token
 
   DCHECK(local_peer_pb.has_permanent_uuid());
   const string& peer_uuid = local_peer_pb.permanent_uuid();
@@ -250,7 +250,7 @@ scoped_refptr<RaftConsensus> RaftConsensus::Create(
   // raw pointer to the token, to emphasize that RaftConsensus is responsible
   // for destroying the token.
   unique_ptr<ThreadPoolToken> raft_pool_token(raft_pool->NewToken(
-      ThreadPool::ExecutionMode::CONCURRENT));
+      ThreadPool::ExecutionMode::CONCURRENT));//DHQ: Consensus和PeerManager共享ThreadPoolToken。二者是从属关系。
 
   // A manager for the set of peers that actually send the operations both remotely
   // and to the local wal.
@@ -265,7 +265,7 @@ scoped_refptr<RaftConsensus> RaftConsensus::Create(
   return make_scoped_refptr(new RaftConsensus(
       options,
       std::move(cmeta),
-      rpc_factory.Pass(),
+      rpc_factory.Pass(), //DHQ: Pass类似于move?
       queue.Pass(),
       peer_manager.Pass(),
       std::move(raft_pool_token),
@@ -393,7 +393,7 @@ Status RaftConsensus::Start(const ConsensusBootstrapInfo& info) {
     RETURN_NOT_OK(BecomeReplicaUnlocked());
   }
 
-  RETURN_NOT_OK(ExecuteHook(POST_START));
+  RETURN_NOT_OK(ExecuteHook(POST_START));//DHQ: 应该是用户注册的hook，不是consensus自身需要的。而是对上接口
 
   // The context tracks that the current caller does not hold the lock for consensus state.
   // So mark dirty callback, e.g., consensus->ConsensusState() for master consensus callback of
@@ -747,7 +747,7 @@ void RaftConsensus::RunLeaderElectionResponseRpcCallback(
                  << StatusFromPB(election_state->resp.error().status()).ToString();
   }
 }
-
+//DHQ: KTimerId就是leader election用的。超时则触发选举. 应该是在一段时间没有收到leader消息后触发这个函数执行
 void RaftConsensus::ReportFailureDetected(const std::string& name, const Status& msg) {
   DCHECK_EQ(name, kTimerId);
 
@@ -800,7 +800,7 @@ Status RaftConsensus::BecomeLeaderUnlocked() {
   withhold_votes_until_ = MonoTime::Max();
 
   leader_no_op_committed_ = false;
-  queue_->RegisterObserver(this);
+  queue_->RegisterObserver(this); //DHQ: Leader上有用的Ovserver，上层知道commit了
   RETURN_NOT_OK(RefreshConsensusQueueAndPeersUnlocked());
 
   // Initiate a NO_OP operation that is sent at the beginning of every term
@@ -961,7 +961,7 @@ Status RaftConsensus::AppendNewRoundsToQueueUnlocked(
   for (const auto& round : rounds) {
     replicate_msgs.push_back(round->replicate_msg());
   }
-  Status s = queue_->AppendOperations(replicate_msgs, Bind(DoNothingStatusCB));
+  Status s = queue_->AppendOperations(replicate_msgs, Bind(DoNothingStatusCB));//DHQ: 加到queue, 里面先启动追加到本地log_cache_
 
   // Handle Status::ServiceUnavailable(), which means the queue is full.
   // TODO: what are we doing about other errors here? Should we also release OpIds in those cases?
@@ -1033,7 +1033,7 @@ void RaftConsensus::NotifyTermChange(int64_t term) {
   }
   WARN_NOT_OK(HandleTermAdvanceUnlocked(term), "Couldn't advance consensus term.");
 }
-
+//DHQ: Follower失败处理
 void RaftConsensus::NotifyFailedFollower(const string& uuid,
                                          int64_t term,
                                          const std::string& reason) {
@@ -1094,11 +1094,11 @@ void RaftConsensus::TryRemoveFollowerTask(const string& uuid,
             << committed_config.opid_index() << ". Reason: " << reason;
   boost::optional<TabletServerErrorPB::Code> error_code;
   WARN_NOT_OK(ChangeConfig(req, Bind(&DoNothingStatusCB), &error_code),
-              state_->LogPrefixThreadSafe() + "Unable to remove follower " + uuid);
+              state_->LogPrefixThreadSafe() + "Unable to remove follower " + uuid);//DHQ: 走ChangeConfig流程
 }
 
 Status RaftConsensus::Update(ConsensusRequestPB* request,
-                             ConsensusResponsePB* response) {
+                             ConsensusResponsePB* response) {//DHQ: 这个就是AppendEntries, TabletServiceImpl::UpdateTransaction调用
 
   if (PREDICT_FALSE(FLAGS_follower_reject_update_consensus_requests)) {
     return STATUS(IllegalState, "Rejected: --follower_reject_update_consensus_requests "
@@ -1112,7 +1112,7 @@ Status RaftConsensus::Update(ConsensusRequestPB* request,
 
   // see var declaration
   std::lock_guard<simple_spinlock> lock(update_lock_);
-  Status s = UpdateReplica(request, response);
+  Status s = UpdateReplica(request, response);//DHQ:调用Replica(follower)的处理函数
   if (PREDICT_FALSE(VLOG_IS_ON(1))) {
     if (request->ops_size() == 0) {
       VLOG_WITH_PREFIX(1) << "Replica replied to status only request. Replica: "
@@ -1126,7 +1126,7 @@ Status RaftConsensus::Update(ConsensusRequestPB* request,
 }
 
 // Helper function to check if the op is a non-Operation op.
-static bool IsConsensusOnlyOperation(OperationType op_type) {
+static bool IsConsensusOnlyOperation(OperationType op_type) {//DHQ: 这个都是raft自身产生的，与应用无关
   return op_type == NO_OP || op_type == CHANGE_CONFIG_OP;
 }
 
@@ -1150,8 +1150,8 @@ Status RaftConsensus::StartReplicaOperationUnlocked(
   scoped_refptr<ConsensusRound> round(new ConsensusRound(this, msg)); //DHQ: 创建了ConsensuRound
   ConsensusRound* round_ptr = round.get();
   RETURN_NOT_OK(state_->GetReplicaOperationFactoryUnlocked()->
-      StartReplicaOperation(round, propagated_safe_time));
-  return state_->AddPendingOperation(round_ptr);
+      StartReplicaOperation(round, propagated_safe_time));//DHQ: follower，也需要启动一个Operation. StartReplicaOperation应该是TabletPeer的函数
+  return state_->AddPendingOperation(round_ptr);//DHQ: 对于非leader，主要是插入消息id
 }
 
 std::string RaftConsensus::LeaderRequest::OpsRangeString() const {
@@ -1390,7 +1390,7 @@ Status RaftConsensus::UpdateReplica(ConsensusRequestPB* request,
                "peer", peer_uuid(),
                "tablet", tablet_id());
 
-  if (request->has_propagated_hybrid_time()) {
+  if (request->has_propagated_hybrid_time()) {//DHQ: request带了hybrid_time
     clock_->Update(HybridTime(request->propagated_hybrid_time()));
   }
 
@@ -1489,7 +1489,7 @@ Status RaftConsensus::UpdateReplica(ConsensusRequestPB* request,
   bool start_election = false;
 
   {
-    ReplicaState::UniqueLock lock;
+    ReplicaState::UniqueLock lock;//DHQ: 这个是ReplicaState, 都借用这个lock?
     RETURN_NOT_OK(state_->LockForUpdate(&lock));
 
     deduped_req.leader_uuid = request->caller_uuid();
@@ -1522,7 +1522,7 @@ Status RaftConsensus::UpdateReplica(ConsensusRequestPB* request,
     RETURN_NOT_OK(EarlyCommitUnlocked(*request, deduped_req));
 
     // 2 - Enqueue the prepares
-    auto result = EnqueuePreparesUnlocked(*request, &deduped_req, response);
+    auto result = EnqueuePreparesUnlocked(*request, &deduped_req, response);//DHQ: 让Prepare异步执行
     RETURN_NOT_OK(result);
     if (!result.get()) {
       return Status::OK();
@@ -1532,7 +1532,7 @@ Status RaftConsensus::UpdateReplica(ConsensusRequestPB* request,
     OpId last_from_leader = EnqueueWritesUnlocked(deduped_req, sync_status_cb);
 
     // 4 - Mark operations as committed
-    RETURN_NOT_OK(MarkOperationsAsCommittedUnlocked(*request, deduped_req, last_from_leader));
+    RETURN_NOT_OK(MarkOperationsAsCommittedUnlocked(*request, deduped_req, last_from_leader));//DHQ: Leader告诉我们，哪些已经commit了
 
     // Fill the response with the current state. We will not mutate anymore state until
     // we actually reply to the leader, we'll just wait for the messages to be durable.
@@ -1546,7 +1546,7 @@ Status RaftConsensus::UpdateReplica(ConsensusRequestPB* request,
   // Release the lock while we wait for the log append to finish so that commits can go through.
   // We'll re-acquire it before we update the state again.
 
-  RETURN_NOT_OK(WaitWritesUnlocked(deduped_req, &log_synchronizer));
+  RETURN_NOT_OK(WaitWritesUnlocked(deduped_req, &log_synchronizer));//DHQ: 这个做同步等待 log完成？
 
   if (PREDICT_FALSE(VLOG_IS_ON(2))) {
     VLOG_WITH_PREFIX(2) << "Replica updated."
@@ -2162,7 +2162,7 @@ RaftPeerPB::Role RaftConsensus::GetActiveRole() const {
 yb::OpId RaftConsensus::GetLatestOpIdFromLog() {
   return log_->GetLatestEntryOpId();
 }
-
+//DHQ: ConsensusOnly,指noop或者confchange
 Status RaftConsensus::StartConsensusOnlyRoundUnlocked(const ReplicateMsgPtr& msg) {
   OperationType op_type = msg->op_type();
   if (!IsConsensusOnlyOperation(op_type)) {

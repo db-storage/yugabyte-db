@@ -230,7 +230,7 @@ class PeerMessageQueue {
   // not delete the entries. The simplest way is to pass the same instance of ConsensusRequestPB to
   // RequestForPeer(): the buffer will replace the old entries with new ones without de-allocating
   // the old ones if they are still required.
-  virtual CHECKED_STATUS RequestForPeer(
+  virtual CHECKED_STATUS RequestForPeer(//DHQ: 这里为了避免copy，做了特殊处理。需要调用者不能释放内存
       const std::string& uuid,
       ConsensusRequestPB* request,
       ReplicateMsgs* msg_refs,
@@ -383,7 +383,7 @@ class PeerMessageQueue {
                                            int64_t term,
                                            const std::string& reason);
 
-  typedef std::unordered_map<std::string, TrackedPeer*> PeersMap;
+  typedef std::unordered_map<std::string, TrackedPeer*> PeersMap; //DHQ: 这里面track了多个Peers
 
   std::string ToStringUnlocked() const;
 

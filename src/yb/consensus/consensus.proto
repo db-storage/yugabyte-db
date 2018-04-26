@@ -146,7 +146,7 @@ enum ChangeConfigType {
 // Diego Ongaro's Raft PhD thesis.
 // This is the RPC request, but it does not end up in the log.
 // See also ChangeConfigRecordPB.
-message ChangeConfigRequestPB {
+message ChangeConfigRequestPB {//DHQ: 这里提到跟ChangeConfigRecordPB的区别，这个是rpc消息，那个是log内容
   // UUID of server this request is addressed to.
   optional bytes dest_uuid = 4;
 
@@ -177,7 +177,7 @@ message ChangeConfigResponsePB {
   // The hybrid_time chosen by the server for this change config operation.
   // TODO: At the time of writing, this field is never set in the response.
   // TODO: Propagate signed hybrid_times. See KUDU-611.
-  optional fixed64 hybrid_time = 2;
+  optional fixed64 hybrid_time = 2;//DHQ: 这个时间，一般不是ReplicateMsg里面的hybrid_time.
 }
 
 // A Replicate message, sent to replicas by leader to indicate this operation must be stored in the
@@ -197,7 +197,7 @@ message ReplicateMsg {
   optional tserver.WriteRequestPB write_request = 5;
   optional tserver.AlterSchemaRequestPB alter_schema_request = 6;
   optional tserver.TransactionStatePB transaction_state = 10;
-  optional tserver.TabletSnapshotOpRequestPB snapshot_request = 11;
+  optional tserver.TabletSnapshotOpRequestPB snapshot_request = 11;//DHQ: 什么使用用这个呢？
   optional tserver.TruncateRequestPB truncate_request = 12;
   optional ChangeConfigRecordPB change_config_record = 7;
 
@@ -232,7 +232,7 @@ message PerOpErrorPB {
 }
 
 // Status message received in the peer responses.
-message ConsensusStatusPB {
+message ConsensusStatusPB {//DHQ: 这个是Peer之间的消息，描述peer当前log状态
 
   // The last message received (and replicated) by the peer.
   required OpIdPB last_received = 1;
@@ -262,7 +262,7 @@ message ConsensusStatusPB {
 // See RAFT sec. 5.2.
 message VoteRequestPB {
   // UUID of server this request is addressed to.
-  optional bytes dest_uuid = 6;
+  optional bytes dest_uuid = 6; //DHQ: Request里面都有dest
 
   // Identifies the tablet configuration a the vote is being requested for.
   required string tablet_id = 1;
@@ -322,7 +322,7 @@ message VoteResponsePB {
 }
 
 // A consensus request message, the basic unit of a consensus round.
-message ConsensusRequestPB {
+message ConsensusRequestPB {//DHQ: 这个跟 ReplicateMsg 啥关系？
   // UUID of server this request is addressed to.
   optional bytes dest_uuid = 7;
 
@@ -344,7 +344,7 @@ message ConsensusRequestPB {
   // last operation.
   //
   // This must be set if 'ops' is non-empty.
-  optional OpIdPB preceding_id = 4;
+  optional OpIdPB preceding_id = 4;//DHQ: 这个只有一个，但是OpId在 ops 里面有多个
 
   // The id of the last committed operation in the configuration. This is the
   // id of the last operation the leader deemed committed from a consensus
@@ -358,7 +358,7 @@ message ConsensusRequestPB {
   // respective OpIds. In some cases committed_index can indicate that
   // these operations are already committed, in which case they will be
   // committed during the same request.
-  repeated ReplicateMsg ops = 6;
+  repeated ReplicateMsg ops = 6;//DHQ: 这个是真正的操作，包含在ConsensusRequestPB里面. ReplicateMsg包含了实际操作的OpId。我理解就是打包多个操作一起发
 
   // Leader lease duration in milliseconds. A leader is not allowed to serve up-to-date reads
   // until it is able to replicate a lease extension. A new leader cannot assume its
@@ -388,7 +388,7 @@ message ConsensusResponsePB {
   optional int64 responder_term = 2;
 
   // The current consensus status of the receiver peer.
-  optional ConsensusStatusPB status = 3;
+  optional ConsensusStatusPB status = 3;//DHQ: response包含这个
 
   // A generic error message (such as tablet not found), per operation
   // error messages are sent along with the consensus status.
@@ -396,7 +396,7 @@ message ConsensusResponsePB {
 }
 
 // A message reflecting the status of an in-flight transaction.
-message OperationStatusPB {
+message OperationStatusPB {//DHQ: 这个虽然是pb，实际上应该不是peer之间通信用的。只是获取下状态而已
   required OpIdPB op_id = 1;
   required OperationType operation_type = 2;
   // Time the transaction has been in flight.
@@ -493,7 +493,7 @@ enum OpIdType {
   COMMITTED_OPID = 2;
 }
 
-message GetLastOpIdRequestPB {
+message GetLastOpIdRequestPB {//DHQ:这个是有RPC service接口的
   // UUID of server this request is addressed to.
   optional bytes dest_uuid = 2;
 
@@ -569,7 +569,7 @@ service ConsensusService {
   rpc GetNodeInstance(GetNodeInstanceRequestPB) returns (GetNodeInstanceResponsePB);
 
   // Force this node to run a leader election.
-  rpc RunLeaderElection(RunLeaderElectionRequestPB) returns (RunLeaderElectionResponsePB);
+  rpc RunLeaderElection(RunLeaderElectionRequestPB) returns (RunLeaderElectionResponsePB);//DHQ: 相当于管理者让它去推选自己
 
   // Notify originator about lost election, so it could reset its timeout.
   rpc LeaderElectionLost(LeaderElectionLostRequestPB) returns (LeaderElectionLostResponsePB);

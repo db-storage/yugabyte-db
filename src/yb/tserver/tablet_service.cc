@@ -1010,7 +1010,7 @@ void ConsensusServiceImpl::UpdateConsensus(const ConsensusRequestPB* req,
   // Unfortunately, we have to use const_cast here, because the protobuf-generated interface only
   // gives us a const request, but we need to be able to move messages out of the request for
   // efficiency.
-  Status s = consensus->Update(const_cast<ConsensusRequestPB*>(req), resp);
+  Status s = consensus->Update(const_cast<ConsensusRequestPB*>(req), resp);//DHQ: Update()的注释中说，就是paper中的AppendEntries
   if (PREDICT_FALSE(!s.ok())) {
     // Clear the response first, since a partially-filled response could
     // result in confusing a caller, or in having missing required fields

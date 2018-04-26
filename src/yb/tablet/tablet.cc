@@ -774,7 +774,7 @@ Status Tablet::AcquireLocksAndPerformDocOperations(
   };
   switch (table_type_) {
     case TableType::REDIS_TABLE_TYPE: {
-      RETURN_NOT_OK(KeyValueBatchFromRedisWriteBatch(data));
+      RETURN_NOT_OK(KeyValueBatchFromRedisWriteBatch(data));//DHQ: 这里面会获取lock, 放在locks_held
       invalid_table_type = false;
       break;
     }
@@ -797,7 +797,7 @@ Status Tablet::AcquireLocksAndPerformDocOperations(
          key_value_write_request->write_batch().kv_pairs_size() == 0)
       << "Expect to be holding locks for a non-zero number of write operations: "
       << key_value_write_request->write_batch().DebugString();
-  state->ReplaceDocDBLocks(std::move(locks_held));//DHQ: move进去了？
+  state->ReplaceDocDBLocks(std::move(locks_held));//DHQ: move进去了？在OperationState的Commit时释放
 
   DCHECK_EQ(key_value_write_request->redis_write_batch_size(), 0)
       << "Redis write batch not empty in key-value batch";
@@ -1056,7 +1056,7 @@ Status Tablet::StartDocWriteOperation(const docdb::DocOperations &doc_ops,
   bool need_read_snapshot = false;
   docdb::PrepareDocWriteOperation(
       doc_ops, metrics_->write_lock_latency, *isolation_level, &shared_lock_manager_,
-      data.keys_locked, &need_read_snapshot);
+      data.keys_locked, &need_read_snapshot); //DHQ: 这里面加锁
 
   auto read_op = need_read_snapshot
       ? ScopedReadOperation(this, RequireLease::kTrue, data.read_time())

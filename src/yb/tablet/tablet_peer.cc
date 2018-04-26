@@ -275,7 +275,7 @@ Status TabletPeer::Start(const ConsensusBootstrapInfo& bootstrap_info) {
 
   VLOG(2) << "RaftConfig before starting: " << consensus_->CommittedConfig().DebugString();
 
-  RETURN_NOT_OK(consensus_->Start(bootstrap_info));
+  RETURN_NOT_OK(consensus_->Start(bootstrap_info)); //DHQ: 调用consensus_的Start()
   {
     std::lock_guard<simple_spinlock> lock(lock_);
     CHECK_EQ(state_, BOOTSTRAPPING);
@@ -653,7 +653,7 @@ Status TabletPeer::GetGCableDataSize(int64_t* retention_size) const {
   RETURN_NOT_OK(CheckRunning());
   int64_t min_op_idx;
   RETURN_NOT_OK(GetEarliestNeededLogIndex(&min_op_idx));
-  log_->GetGCableDataSize(min_op_idx, retention_size);
+  log_->GetGCableDataSize(min_op_idx, retention_size);//DHQ: 应该是顺序GC的。
   return Status::OK();
 }
 
@@ -692,8 +692,8 @@ std::unique_ptr<Operation> TabletPeer::CreateOperation(consensus::ReplicateMsg* 
   FATAL_INVALID_ENUM_VALUE(consensus::OperationType, replicate_msg->op_type());
 }
 
-Status TabletPeer::StartReplicaOperation(
-    const scoped_refptr<ConsensusRound>& round, HybridTime propagated_safe_time) {
+Status TabletPeer::StartReplicaOperation(//DHQ: Replica，应该是follower
+    const scoped_refptr<ConsensusRound>& round, HybridTime propagated_safe_time) {//DHQ: 这种operation，先做好分配，等commit后，执行后续action
   {
     std::lock_guard<simple_spinlock> lock(lock_);
     if (state_ != RUNNING && state_ != BOOTSTRAPPING) {
@@ -703,7 +703,7 @@ Status TabletPeer::StartReplicaOperation(
 
   consensus::ReplicateMsg* replicate_msg = round->replicate_msg().get();
   DCHECK(replicate_msg->has_hybrid_time());
-  auto operation = CreateOperation(replicate_msg);
+  auto operation = CreateOperation(replicate_msg);//DHQ: 针对各种消息，产生相应的operation
 
   // TODO(todd) Look at wiring the stuff below on the driver
   OperationState* state = operation->state();

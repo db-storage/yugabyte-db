@@ -401,7 +401,7 @@ Status OperationDriver::ApplyAsync() {
   TRACE_EVENT_FLOW_BEGIN0("operation", "ApplyTask", this);
   // Key-value tables backed by RocksDB require that we apply changes synchronously to enforce
   // the order.
-  ApplyTask();
+  ApplyTask();//DHQ: 这里说的RocksDB要求用sync方式apply，以维持order
   return Status::OK();
 }
 

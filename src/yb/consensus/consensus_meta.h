@@ -69,7 +69,7 @@ namespace consensus {
 // configuration.
 //
 // This class is not thread-safe and requires external synchronization.
-class ConsensusMetadata {
+class ConsensusMetadata { //DHQ: ReplicaState里面的cmeta_就是这个. 有个对应的PB做持久化
  public:
   // Create a ConsensusMetadata object with provided initial state.
   // Encoded PB is flushed to disk before returning.

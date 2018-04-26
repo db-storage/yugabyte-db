@@ -190,7 +190,7 @@ void Peer::SendNextRequest(RequestTriggerMode trigger_mode) {//DHQ: 这个是Pee
   int64_t commit_index_before = request_.has_committed_index() ?
       request_.committed_index().index() : kMinimumOpIdIndex; //DHQ: 实际上可以指定个committed_index?
   Status s = queue_->RequestForPeer(peer_pb_.permanent_uuid(), &request_,
-      &replicate_msg_refs_, &needs_remote_bootstrap, &member_type, &last_exchange_successful);
+      &replicate_msg_refs_, &needs_remote_bootstrap, &member_type, &last_exchange_successful);//DHQ: 获得该peer的下一个request
   int64_t commit_index_after = request_.has_committed_index() ?
       request_.committed_index().index() : kMinimumOpIdIndex;
 
@@ -288,7 +288,7 @@ void Peer::ProcessResponse() {
 
   // We should try to evict a follower which returns a WRONG UUID error.
   if (response_.has_error() &&
-      response_.error().code() == tserver::TabletServerErrorPB::WRONG_SERVER_UUID) {
+      response_.error().code() == tserver::TabletServerErrorPB::WRONG_SERVER_UUID) {//DHQ: wrong UUID，直接evict掉。
     queue_->NotifyObserversOfFailedFollower(
         peer_pb_.permanent_uuid(),
         Substitute("Leader communication with peer $0 received error $1, will try to "

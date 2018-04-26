@@ -167,7 +167,7 @@ class OperationDriver : public RefCountedThreadSafe<OperationDriver>,
 
   Trace* trace() { return trace_.get(); }
 
-  void HandleConsensusAppend() override;
+  void HandleConsensusAppend() override; //DHQ: override ConsensusAppendCallback 定义的函数
 
   bool is_leader_side() {
     // TODO: switch state to an atomic.

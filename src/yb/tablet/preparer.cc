@@ -205,10 +205,10 @@ void PreparerImpl::ProcessItem(OperationDriver* item) {
     if (leader_side_batch_.size() >= FLAGS_max_group_replicate_batch_size ||
         !leader_side_batch_.empty() &&
             bound_term != leader_side_batch_.back()->consensus_round()->bound_term()) {
-      ProcessAndClearLeaderSideBatch();
+      ProcessAndClearLeaderSideBatch();//DHQ: 里面做了group replicate，尽量等待和产生Batch
     }
     leader_side_batch_.push_back(item);
-    if (apply_separately) {
+    if (apply_separately) {//DHQ: 需要单独apply的，直接处理Batch
       ProcessAndClearLeaderSideBatch();
     }
   } else {
@@ -241,14 +241,14 @@ void PreparerImpl::ProcessAndClearLeaderSideBatch() {
 
     if (PREDICT_TRUE(s.ok())) {
       replication_subbatch_end = ++iter;
-    } else {
-      ReplicateSubBatch(replication_subbatch_begin, replication_subbatch_end);
+    } else {//DHQ: 跳过Prepare失败的，
+      ReplicateSubBatch(replication_subbatch_begin, replication_subbatch_end);//DHQ: failure前面的，作为batch先replicate
 
       // Handle failure for this operation itself.
-      operation_driver->HandleFailure(s);
+      operation_driver->HandleFailure(s);//DHQ: 处理失败的
 
       // Now we'll start accumulating a new batch.
-      replication_subbatch_begin = replication_subbatch_end = ++iter;
+      replication_subbatch_begin = replication_subbatch_end = ++iter; //DHQ: 越过
     }
   }
 

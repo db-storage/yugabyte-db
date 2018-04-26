@@ -234,8 +234,8 @@ void PeerMessageQueue::UntrackPeer(const string& uuid) {
 }
 
 void PeerMessageQueue::CheckPeersInActiveConfigIfLeaderUnlocked() const {
-  if (queue_state_.mode != Mode::LEADER) return;
-  unordered_set<string> config_peer_uuids;
+  if (queue_state_.mode != Mode::LEADER) return;//DHQ: 必须是leader
+  unordered_set<string> config_peer_uuids;//DHQ:  放到set便于查找
   for (const RaftPeerPB& peer_pb : queue_state_.active_config->peers()) {
     InsertOrDie(&config_peer_uuids, peer_pb.permanent_uuid());
   }
@@ -298,19 +298,19 @@ Status PeerMessageQueue::AppendOperations(const ReplicateMsgs& msgs,
   // the log buffer is full, in which case AppendOperations would block. However,
   // for the log buffer to empty, it may need to call LocalPeerAppendFinished()
   // which also needs queue_lock_.
-  lock.unlock();
+  lock.unlock();//DHQ: 由于发送到远端follower时，是从log_cache_读，所以这里搞定cache_，并更新last_append即可。 RequestForPeer即可从log_cache_找到请求
   RETURN_NOT_OK(log_cache_.AppendOperations(msgs,
                                             Bind(&PeerMessageQueue::LocalPeerAppendFinished,
-                                                 Unretained(this),
+                                                 Unretained(this),//DHQ: PeerMessageQueue 并不是RefCounted，不加Unretained没法Bind
                                                  last_id,
-                                                 log_append_callback)));//DHQ: 这个是接近我们用法的callback，AppendOperations支持的Callack非常强大。
+                                                 log_append_callback)));//DHQ: 这个是接近我们用法的callback，AppendOperations支持的Callack非常强大。 
   lock.lock();
   queue_state_.last_appended = last_id;
   UpdateMetrics();
 
   return Status::OK();
 }
-
+//DHQ: SendNextRequest调用
 Status PeerMessageQueue::RequestForPeer(const string& uuid,
                                         ConsensusRequestPB* request,
                                         ReplicateMsgs* msg_refs,
@@ -325,7 +325,7 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
     DCHECK_EQ(queue_state_.state, State::kQueueOpen);
     DCHECK_NE(uuid, local_peer_uuid_);
 
-    peer = FindPtrOrNull(peers_map_, uuid);
+    peer = FindPtrOrNull(peers_map_, uuid);//DHQ: 还得先找peer
     if (PREDICT_FALSE(peer == nullptr || queue_state_.mode == Mode::NON_LEADER)) {
       return STATUS(NotFound, "Peer not tracked or queue not in leader mode.");
     }
@@ -401,7 +401,7 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
     Status s = log_cache_.ReadOps(peer->next_index - 1,
                                   max_batch_size,
                                   &messages,
-                                  &preceding_id);
+                                  &preceding_id);//DHQ: 从本地log_cache_里面获取要发送的下一个request。实际上本地log就是先写的(AppendOperations)，不是平等对待各个Peer
     if (PREDICT_FALSE(!s.ok())) {
       if (PREDICT_TRUE(s.IsNotFound())) {
         // It's normal to have a NotFound() here if a follower falls behind where
@@ -433,7 +433,7 @@ Status PeerMessageQueue::RequestForPeer(const string& uuid,
     for (const auto& msg : messages) {
       request->mutable_ops()->AddAllocated(msg.get());
     }
-    msg_refs->swap(messages);
+    msg_refs->swap(messages);//DHQ: 应该是msg_refs增加计数，防止被释放了
     DCHECK_LE(request->ByteSize(), FLAGS_consensus_max_batch_size_bytes);
   }
 
@@ -483,11 +483,11 @@ Status PeerMessageQueue::GetRemoteBootstrapRequestForPeer(const string& uuid,
   req->set_bootstrap_peer_uuid(local_peer_uuid_);
   *req->mutable_bootstrap_peer_addr() = local_peer_pb_.last_known_addr();
   req->set_caller_term(queue_state_.current_term);
-  peer->needs_remote_bootstrap = false; // Now reset the flag.
+  peer->needs_remote_bootstrap = false; // Now reset the flag. 已经生产bootstrap请求，不用再做了
   return Status::OK();
 }
 
-void PeerMessageQueue::UpdateAllReplicatedOpId(OpId* result) {
+void PeerMessageQueue::UpdateAllReplicatedOpId(OpId* result) {//DHQ: 根据各个peer的last_received_index，生成结果
   OpId new_op_id = MaximumOpId();
 
   for (const auto& peer : peers_map_) {
@@ -678,7 +678,7 @@ void PeerMessageQueue::NotifyPeerIsResponsiveDespiteError(const std::string& pee
   if (!peer) return;
   peer->last_successful_communication_time = MonoTime::Now();
 }
-
+//DHQ: 这里面也会处理error
 void PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
                                         const ConsensusResponsePB& response,
                                         bool* more_pending) {
@@ -765,7 +765,7 @@ void PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
       // Their log may have diverged from ours, however we are in the process
       // of replicating our ops to them, so continue doing so. Eventually, we
       // will cause the divergent entry in their log to be overwritten.
-      peer->last_received = status.last_received_current_leader();
+      peer->last_received = status.last_received_current_leader();//DHQ: 记录对方的last_received, MinimumOpId应该是缺省的无效值
       peer->next_index = peer->last_received.index() + 1;
 
     } else {
@@ -833,7 +833,7 @@ void PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
         (peer->last_known_committed_idx < queue_state_.committed_index.index());
 
     mode_copy = queue_state_.mode;
-    if (mode_copy == Mode::LEADER) {
+    if (mode_copy == Mode::LEADER) {//DHQ: leader需要更新majority_replicated 相关内容
       auto new_majority_replicated_opid = OpIdWatermark();
       if (!OpIdEquals(new_majority_replicated_opid, MinimumOpId())) {
         if (new_majority_replicated_opid.index() == MaximumOpId().index()) {
@@ -857,7 +857,7 @@ void PeerMessageQueue::ResponseFromPeer(const std::string& peer_uuid,
 
     UpdateAllReplicatedOpId(&queue_state_.all_replicated_opid);//DHQ: 注意，All的含义，是所有peer都收到这个log了，可以清除log cache
 
-    log_cache_.EvictThroughOp(queue_state_.all_replicated_opid.index());//DHQ: 可以用这个来Evict log cache
+    log_cache_.EvictThroughOp(queue_state_.all_replicated_opid.index());//DHQ: all_replicated_opid, 用来Evict log cache
 
     UpdateMetrics();
   }
@@ -995,7 +995,7 @@ bool PeerMessageQueue::IsOpInLog(const OpId& desired_op) const {
 
 void PeerMessageQueue::NotifyObserversOfMajorityReplOpChange(
     const MajorityReplicatedData& majority_replicated_data) {
-  WARN_NOT_OK(raft_pool_observers_token_->SubmitClosure(
+  WARN_NOT_OK(raft_pool_observers_token_->SubmitClosure(//DHQ: 做成一个Closure, submit
       Bind(&PeerMessageQueue::NotifyObserversOfMajorityReplOpChangeTask,
            Unretained(this),
            majority_replicated_data)),

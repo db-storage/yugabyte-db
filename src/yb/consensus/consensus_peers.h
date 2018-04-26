@@ -299,7 +299,7 @@ class PeerProxyFactory {
 };
 
 // PeerProxy implementation that does RPC calls
-class RpcPeerProxy : public PeerProxy {
+class RpcPeerProxy : public PeerProxy {//DHQ: 这个是实现RPC的proxy
  public:
   RpcPeerProxy(gscoped_ptr<HostPort> hostport,
                gscoped_ptr<ConsensusServiceProxy> consensus_proxy);
