@@ -502,7 +502,7 @@ void Tablet::ApplyRowOperations(WriteOperationState* operation_state) {
 }
 
 Status Tablet::CreateCheckpoint(const std::string& dir,
-                                google::protobuf::RepeatedPtrField<FilePB>* rocksdb_files) {
+                                google::protobuf::RepeatedPtrField<FilePB>* rocksdb_files) {//DHQ: rocksdb_files，用户给follower返回列表
   ScopedPendingOperation scoped_read_operation(&pending_op_counter_);
   RETURN_NOT_OK(scoped_read_operation);
 

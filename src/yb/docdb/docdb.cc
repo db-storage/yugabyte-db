@@ -215,9 +215,9 @@ void PrepareNonTransactionWriteBatch(
     std::array<Slice, 2> key_parts = {{
         Slice(kv_pair.key()),
         doc_ht_buffer.EncodeWithValueType(hybrid_time, write_id),
-    }};
+    }};//DHQ: 一个key/value，到这里变成了两个k/v parts。第二个k/v的key，包含time和write_id
     Slice key_value = kv_pair.value();
-    rocksdb_write_batch->Put(key_parts, { &key_value, 1 });
+    rocksdb_write_batch->Put(key_parts, { &key_value, 1 }); //DHQ: 第二个k/v part的value是1. 到了rocksdb里面，可能是做key/key合并，val/val合并？ 参见 PutLengthPrefixedSliceParts，确实会合并的, std::array隐含转变为SliceParts结构
   }
 }
 

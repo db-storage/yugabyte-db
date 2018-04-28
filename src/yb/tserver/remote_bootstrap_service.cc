@@ -107,7 +107,7 @@ namespace tserver {
 using crc::Crc32c;
 using strings::Substitute;
 using tablet::TabletPeer;
-
+//DHQ: 将Status转换出message和error(里面有PB)，然后调用context回复RPC消息
 static void SetupErrorAndRespond(rpc::RpcContext* context,
                                  RemoteBootstrapErrorPB::Code code,
                                  const string& message,
@@ -132,7 +132,7 @@ RemoteBootstrapServiceImpl::RemoteBootstrapServiceImpl(
       shutdown_latch_(1) {
   CHECK_OK(Thread::Create("remote-bootstrap", "rb-session-exp",
                           &RemoteBootstrapServiceImpl::EndExpiredSessions, this,
-                          &session_expiration_thread_));
+                          &session_expiration_thread_));//DHQ: 启动专门的线程，处理expire
 }
 
 void RemoteBootstrapServiceImpl::BeginRemoteBootstrapSession(
@@ -149,46 +149,46 @@ void RemoteBootstrapServiceImpl::BeginRemoteBootstrapSession(
   scoped_refptr<TabletPeer> tablet_peer;
   RPC_RETURN_NOT_OK(tablet_peer_lookup_->GetTabletPeer(tablet_id, &tablet_peer),
                     RemoteBootstrapErrorPB::TABLET_NOT_FOUND,
-                    Substitute("Unable to find specified tablet: $0", tablet_id));
+                    Substitute("Unable to find specified tablet: $0", tablet_id));//DHQ: 查不到tablet_peer，直接报错
 
   scoped_refptr<RemoteBootstrapSessionClass> session;
   {
     boost::lock_guard<simple_spinlock> l(sessions_lock_);
-    if (!FindCopy(sessions_, session_id, &session)) {
+    if (!FindCopy(sessions_, session_id, &session)) {//DHQ: 找不到既有的，创建新的
       LOG(INFO) << "Beginning new remote bootstrap session on tablet " << tablet_id
                 << " from peer " << requestor_uuid << " at " << context.requestor_string()
                 << ": session id = " << session_id;
       session.reset(new RemoteBootstrapSessionClass(tablet_peer, session_id,
                                                     requestor_uuid, fs_manager_));
-      RPC_RETURN_NOT_OK(session->Init(),
+      RPC_RETURN_NOT_OK(session->Init(),//DHQ:调用Init
                         RemoteBootstrapErrorPB::UNKNOWN_ERROR,
                         Substitute("Error initializing remote bootstrap session for tablet $0",
                                    tablet_id));
-      InsertOrDie(&sessions_, session_id, session);
+      InsertOrDie(&sessions_, session_id, session);//DHQ: 插入到map中
     } else {
       LOG(INFO) << "Re-initializing existing remote bootstrap session on tablet " << tablet_id
                 << " from peer " << requestor_uuid << " at " << context.requestor_string()
                 << ": session id = " << session_id;
-      RPC_RETURN_NOT_OK(session->Init(),
+      RPC_RETURN_NOT_OK(session->Init(),//DHQ: 也调用了Init
                         RemoteBootstrapErrorPB::UNKNOWN_ERROR,
                         Substitute("Error initializing remote bootstrap session for tablet $0",
                                    tablet_id));
     }
-    ResetSessionExpirationUnlocked(session_id);
+    ResetSessionExpirationUnlocked(session_id);//DHQ: 重置Expire时间
   }
 
   resp->set_session_id(session_id);
   resp->set_session_idle_timeout_millis(FLAGS_remote_bootstrap_idle_timeout_ms);
   resp->mutable_superblock()->CopyFrom(session->tablet_superblock());
-  resp->mutable_initial_committed_cstate()->CopyFrom(session->initial_committed_cstate());
+  resp->mutable_initial_committed_cstate()->CopyFrom(session->initial_committed_cstate());//DHQ:Session的Init()做了checkpoint,所以这里知道committed_cstate
 
-  for (const scoped_refptr<log::ReadableLogSegment>& segment : session->log_segments()) {
+  for (const scoped_refptr<log::ReadableLogSegment>& segment : session->log_segments()) {//DHQ: log_segments，告诉对方。
     resp->add_wal_segment_seqnos(segment->header().sequence_number());
   }
 
   context.RespondSuccess();
 }
-
+//DHQ: 这个也是RPC service routine，带req，类似于HB
 void RemoteBootstrapServiceImpl::CheckSessionActive(
         const CheckRemoteBootstrapSessionActiveRequestPB* req,
         CheckRemoteBootstrapSessionActiveResponsePB* resp,
@@ -216,7 +216,7 @@ void RemoteBootstrapServiceImpl::CheckSessionActive(
                       Substitute("Error trying to check whether session $0 is active", session_id));
   }
 }
-
+//DHQ: Server端内部函数，非RPC
 Status RemoteBootstrapServiceImpl::GetDataFilePiece(
     const DataIdPB& data_id,
     const scoped_refptr<RemoteBootstrapSessionClass>& session,
@@ -226,7 +226,7 @@ Status RemoteBootstrapServiceImpl::GetDataFilePiece(
     int64_t* total_data_length,
     RemoteBootstrapErrorPB::Code* error_code) {
   switch (data_id.type()) {
-    case DataIdPB::BLOCK: {
+    case DataIdPB::BLOCK: {//DHQ: 应该是SST file的一部分
       // Fetching a data block chunk.
       const BlockId& block_id = BlockId::FromPB(data_id.block_id());
       RETURN_NOT_OK_PREPEND(session->GetBlockPiece(
@@ -235,7 +235,7 @@ Status RemoteBootstrapServiceImpl::GetDataFilePiece(
                             "Unable to get piece of data block");
       break;
     }
-    case DataIdPB::LOG_SEGMENT: {
+    case DataIdPB::LOG_SEGMENT: {//DHQ: log file的一部分(chunk)，里面有offset，不是完整的file
       // Fetching a log segment chunk.
       const uint64_t segment_seqno = data_id.wal_segment_seqno();
       RETURN_NOT_OK_PREPEND(session->GetLogSegmentPiece(
@@ -271,14 +271,14 @@ void RemoteBootstrapServiceImpl::FetchData(const FetchDataRequestPB* req,
     boost::lock_guard<simple_spinlock> l(sessions_lock_);
     RemoteBootstrapErrorPB::Code app_error;
     RPC_RETURN_NOT_OK(FindSessionUnlocked(session_id, &app_error, &session),
-                      app_error, "No such session");
-    ResetSessionExpirationUnlocked(session_id);
+                      app_error, "No such session");//DHQ: 获取session的指针
+    ResetSessionExpirationUnlocked(session_id); //DHQ: 操作时，顺带进行reset
   }
 
   MAYBE_FAULT(FLAGS_fault_crash_on_handle_rb_fetch_data);
 
-  uint64_t offset = req->offset();
-  int64_t client_maxlen = req->max_length();
+  uint64_t offset = req->offset();//DHQ: req带的offset
+  int64_t client_maxlen = req->max_length();//DHQ: max
 
   const DataIdPB& data_id = req->data_id();
   RemoteBootstrapErrorPB::Code error_code = RemoteBootstrapErrorPB::UNKNOWN_ERROR;
@@ -292,7 +292,7 @@ void RemoteBootstrapServiceImpl::FetchData(const FetchDataRequestPB* req,
                                      &total_data_length, &error_code),
                     error_code, "Unable to get piece of data file");
 
-  data_chunk->set_total_data_length(total_data_length);
+  data_chunk->set_total_data_length(total_data_length);//DHQ: 实际读取的长度
   data_chunk->set_offset(offset);
 
   // Calculate checksum.
@@ -475,7 +475,7 @@ void RemoteBootstrapServiceImpl::EndExpiredSessions() {
       CHECK_OK(DoEndRemoteBootstrapSessionUnlocked(session_id, false, &app_error));
     }
   } while (!shutdown_latch_.WaitFor(MonoDelta::FromMilliseconds(
-                                    FLAGS_remote_bootstrap_timeout_poll_period_ms)));
+                                    FLAGS_remote_bootstrap_timeout_poll_period_ms)));//DHQ: 这里实际上放锁了
 }
 
 } // namespace tserver

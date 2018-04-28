@@ -162,7 +162,7 @@ Status RemoteBootstrapSession::ChangeRole() {
                                          requestor_uuid_, tablet_peer_->tablet_id()));
 }
 
-Status RemoteBootstrapSession::SetInitialCommittedState() {
+Status RemoteBootstrapSession::SetInitialCommittedState() { //DHQ: 这个实际上是Raft的commited config，不是rocksdb的状态
   scoped_refptr <consensus::Consensus> consensus = tablet_peer_->shared_consensus();
   if (!consensus) {
     tablet::TabletStatePB tablet_state = tablet_peer_->state();
@@ -194,10 +194,10 @@ Status RemoteBootstrapSession::Init() {
       MinimumOpId().index(), anchor_owner_token, &log_anchor_); //DHQ: anchor log before creating checkpoint
 
   // Read the SuperBlock from disk.
-  const scoped_refptr<TabletMetadata>& metadata = tablet_peer_->tablet_metadata();
+  const scoped_refptr<TabletMetadata>& metadata = tablet_peer_->tablet_metadata();//DHQ: metadata是内存结构，不是PB
   RETURN_NOT_OK_PREPEND(metadata->ReadSuperBlockFromDisk(&tablet_superblock_),
                         Substitute("Unable to access superblock for tablet $0",
-                                   tablet_id));
+                                   tablet_id));//DHQ: 这个 superblock_是PB，包含tablet所有信息
 
   // Get the latest opid in the log at this point in time so we can re-anchor.
   auto last_logged_opid = tablet_peer_->log()->GetLatestEntryOpId();
