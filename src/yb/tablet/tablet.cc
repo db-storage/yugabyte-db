@@ -761,7 +761,7 @@ Status Tablet::KeyValueBatchFromQLWriteBatch(const WriteOperationData& data) {
   return Status::OK();
 }
 
-Status Tablet::AcquireLocksAndPerformDocOperations(
+Status Tablet::AcquireLocksAndPerformDocOperations(//DHQ: 在ReleaseDocDbLocks中释放
     WriteOperationState *state, HybridTime* restart_read_ht) {
   LockBatch locks_held;
   WriteRequestPB* key_value_write_request = state->mutable_request();

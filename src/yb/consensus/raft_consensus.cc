@@ -875,7 +875,7 @@ Status RaftConsensus::ReplicateBatch(const ConsensusRounds& rounds) {
                                                 << round->replicate_msg()->DebugString();
     }
 #endif
-    RETURN_NOT_OK(state_->LockForReplicate(&lock));//DHQ: Conesensus与state是一一对应的
+    RETURN_NOT_OK(state_->LockForReplicate(&lock));//DHQ: Conesensus与 state_ 是一一对应的
     auto current_term = state_->GetCurrentTermUnlocked();
 
     for (const auto& round : rounds) {
@@ -914,7 +914,7 @@ Status RaftConsensus::CheckLeadershipAndBindTerm(const scoped_refptr<ConsensusRo
   return Status::OK();
 }
 
-Status RaftConsensus::AppendNewRoundToQueueUnlocked(const scoped_refptr<ConsensusRound>& round) {
+Status RaftConsensus::AppendNewRoundToQueueUnlocked(const scoped_refptr<ConsensusRound>& round) { //DHQ: 只有一个round，原来仅用于ConfChange，但是我们split时，也需要用到这个
   return AppendNewRoundsToQueueUnlocked({ round });
 }
 
@@ -940,7 +940,7 @@ Status RaftConsensus::AppendNewRoundsToQueueUnlocked(
       append_cb->HandleConsensusAppend();
     }
 
-    Status s = state_->AddPendingOperation(round);
+    Status s = state_->AddPendingOperation(round);//DHQ: PendingOperation,加到 state_ 上
     if (!s.ok()) {
       // Iterate rounds in the reverse order and release ids. We add one to the iterator before
       // converting to a reverse iterator to get a reverse iterator staring with the current
@@ -961,7 +961,7 @@ Status RaftConsensus::AppendNewRoundsToQueueUnlocked(
   for (const auto& round : rounds) {
     replicate_msgs.push_back(round->replicate_msg());
   }
-  Status s = queue_->AppendOperations(replicate_msgs, Bind(DoNothingStatusCB));//DHQ: 加到queue, 里面先启动追加到本地log_cache_
+  Status s = queue_->AppendOperations(replicate_msgs, Bind(DoNothingStatusCB));//DHQ: Operation 加到queue, 里面先启动追加到本地log_cache_
 
   // Handle Status::ServiceUnavailable(), which means the queue is full.
   // TODO: what are we doing about other errors here? Should we also release OpIds in those cases?
@@ -2080,7 +2080,7 @@ Status RaftConsensus::ChangeConfig(const ChangeConfigRequestPB& req,
     }
 
     auto cc_replicate = std::make_shared<ReplicateMsg>();
-    cc_replicate->set_op_type(CHANGE_CONFIG_OP);
+    cc_replicate->set_op_type(CHANGE_CONFIG_OP);//DHQ: 设置 req 类型
     ChangeConfigRecordPB* cc_req = cc_replicate->mutable_change_config_record();
     cc_req->set_tablet_id(tablet_id());
     *cc_req->mutable_old_config() = committed_config;

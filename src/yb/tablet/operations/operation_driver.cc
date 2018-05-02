@@ -102,8 +102,8 @@ Status OperationDriver::Init(std::unique_ptr<Operation> operation, DriverType ty
       consensus::ReplicateMsgPtr replicate_msg = operation_->NewReplicateMsg();
       mutable_state()->set_consensus_round(//DHQ: 新建立一个Round
         consensus_->NewRound(std::move(replicate_msg),
-                             Bind(&OperationDriver::ReplicationFinished, Unretained(this))));
-      mutable_state()->consensus_round()->SetAppendCallback(this);
+                             Bind(&OperationDriver::ReplicationFinished, Unretained(this)))); //DHQ: ReplicationFinished 有个callback
+      mutable_state()->consensus_round()->SetAppendCallback(this);//DHQ: 设置这个，是为了在晚些，调用HandleConsensusAppend，获取TS等
     }
   }
 

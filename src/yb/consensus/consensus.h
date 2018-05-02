@@ -564,7 +564,7 @@ class ConsensusRound : public RefCountedThreadSafe<ConsensusRound> {
   }
 
   void SetAppendCallback(ConsensusAppendCallback* append_cb) {
-    append_cb_ = append_cb;
+    append_cb_ = append_cb; //DHQ: AppendNewRoundsToQueueUnlocked 里面调用
   }
 
   ConsensusAppendCallback* append_callback() {

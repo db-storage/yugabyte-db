@@ -349,7 +349,7 @@ class Tablet : public AbstractTablet, public TransactionIntentApplier {
   // For non-kudu table type fills key-value batch in transaction state request and updates
   // request in state. Due to acquiring locks it can block the thread.
   CHECKED_STATUS AcquireLocksAndPerformDocOperations(
-      WriteOperationState *state, HybridTime* restart_read_ht);
+      WriteOperationState *state, HybridTime* restart_read_ht);//DHQ: 在ReleaseDocDbLocks中释放锁
 
   static const char* kDMSMemTrackerId;
 

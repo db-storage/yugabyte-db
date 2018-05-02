@@ -278,7 +278,7 @@ void PreparerImpl::ReplicateSubBatch(
   for (auto batch_iter = batch_begin; batch_iter != batch_end; ++batch_iter) {
     DCHECK_ONLY_NOTNULL(*batch_iter);
     DCHECK_ONLY_NOTNULL((*batch_iter)->consensus_round());
-    rounds_to_replicate_.push_back((*batch_iter)->consensus_round());
+    rounds_to_replicate_.push_back((*batch_iter)->consensus_round()); //DHQ: 这里就是round了，没有 OperationDrivers 的什么事了
   }
 
   const Status s = consensus_->ReplicateBatch(rounds_to_replicate_);

@@ -116,7 +116,7 @@ void WriteOperation::PreCommit() { //DHQ: 这里ReleaseDocDbLocks
   TRACE_EVENT0("txn", "WriteOperation::PreCommit");
   TRACE("PRECOMMIT: Releasing row and schema locks");
   // Perform early lock release after we've applied all changes
-  state()->ReleaseDocDbLocks(tablet()); //DHQ: state()啥时候获得了lock?  应该是AcquireLocksAndPerformDocOperations获得的，到PreCommit才释放
+  state()->ReleaseDocDbLocks(tablet()); //DHQ: AcquireLocksAndPerformDocOperations获得的lock，到PreCommit才释放
 }
 
 void WriteOperation::Finish(OperationResult result) {
