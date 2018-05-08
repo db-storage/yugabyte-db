@@ -437,7 +437,7 @@ void OperationDriver::Finalize() {
   scoped_refptr<OperationDriver> ref(this);
   std::lock_guard<simple_spinlock> lock(lock_);
   operation_->Finish(Operation::COMMITTED);
-  mutable_state()->completion_callback()->OperationCompleted();
+  mutable_state()->completion_callback()->OperationCompleted(); //DHQ: 这里调用OperationCompleted, 已经在Apply和PreCommit之后了
   operation_tracker_->Release(this);
 }
 

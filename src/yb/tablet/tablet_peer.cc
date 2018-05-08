@@ -656,7 +656,7 @@ Status TabletPeer::GetGCableDataSize(int64_t* retention_size) const {
   log_->GetGCableDataSize(min_op_idx, retention_size);//DHQ: 应该是顺序GC的。
   return Status::OK();
 }
-
+//DHQ: 这个是follower端，根据Msg创建相应的 Operation的函数。Leader端事先知道Operation
 std::unique_ptr<Operation> TabletPeer::CreateOperation(consensus::ReplicateMsg* replicate_msg) {
   switch (replicate_msg->op_type()) {
     case consensus::WRITE_OP:

@@ -288,7 +288,7 @@ Status TabletBootstrap::Bootstrap(shared_ptr<TabletClass>* rebuilt_tablet,
     VLOG_WITH_PREFIX(1) << "Tablet Metadata: " << super_block.DebugString();
   }
 
-  bool has_blocks = VERIFY_RESULT(OpenTablet());
+  bool has_blocks = VERIFY_RESULT(OpenTablet());//DHQ: 这里没判断到底apply到哪了，会不会造成不连续的apply?
 
   bool needs_recovery;
   RETURN_NOT_OK(PrepareRecoveryDir(&needs_recovery));
@@ -303,7 +303,7 @@ Status TabletBootstrap::Bootstrap(shared_ptr<TabletClass>* rebuilt_tablet,
     RETURN_NOT_OK(FinishBootstrap("No bootstrap required, opened a new log",
                                   rebuilt_log,
                                   rebuilt_tablet));
-    consensus_info->last_id = MinimumOpId();
+    consensus_info->last_id = MinimumOpId();//DHQ: 如果不需要bootstrap，则把last_id和last_commit_id都设置成这个
     consensus_info->last_committed_id = MinimumOpId();
     return Status::OK();
   }
@@ -338,7 +338,7 @@ Status TabletBootstrap::FinishBootstrap(const string& message,
   return Status::OK();
 }
 
-Result<bool> TabletBootstrap::OpenTablet() {
+Result<bool> TabletBootstrap::OpenTablet() {//DHQ: 返回值表示是否有数据
   auto tablet = std::make_unique<TabletClass>(
       meta_, data_.clock, mem_tracker_, metric_registry_, log_anchor_registry_, tablet_options_,
       data_.transaction_participant_context, data_.transaction_coordinator_context);
@@ -436,7 +436,7 @@ Status TabletBootstrap::OpenLogReaderInRecoveryDir() {
                                                        tablet_->metadata()->tablet_id(),
                                                        tablet_->metadata()->wal_dir(),
                                                        tablet_->GetMetricEntity().get(),
-                                                       &log_reader_),
+                                                       &log_reader_),//DHQ: 直接给log_reader
                         "Could not open LogReader. Reason");
   return Status::OK();
 }
