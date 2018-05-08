@@ -112,7 +112,7 @@ Status WriteOperation::Apply() {
   return Status::OK();
 }
 
-void WriteOperation::PreCommit() { //DHQ: 这里ReleaseDocDbLocks
+void WriteOperation::PreCommit() { //DHQ: only on leader? 
   TRACE_EVENT0("txn", "WriteOperation::PreCommit");
   TRACE("PRECOMMIT: Releasing row and schema locks");
   // Perform early lock release after we've applied all changes

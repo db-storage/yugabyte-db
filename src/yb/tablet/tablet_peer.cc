@@ -692,7 +692,7 @@ std::unique_ptr<Operation> TabletPeer::CreateOperation(consensus::ReplicateMsg* 
   FATAL_INVALID_ENUM_VALUE(consensus::OperationType, replicate_msg->op_type());
 }
 
-Status TabletPeer::StartReplicaOperation(//DHQ: Replica，应该是follower
+Status TabletPeer::StartReplicaOperation(//DHQ: Follower 
     const scoped_refptr<ConsensusRound>& round, HybridTime propagated_safe_time) {//DHQ: 这种operation，先做好分配，等commit后，执行后续action
   {
     std::lock_guard<simple_spinlock> lock(lock_);
@@ -721,7 +721,7 @@ Status TabletPeer::StartReplicaOperation(//DHQ: Replica，应该是follower
 
   // Unretained is required to avoid a refcount cycle.
   state->consensus_round()->SetConsensusReplicatedCallback(
-      Bind(&OperationDriver::ReplicationFinished, Unretained(driver.get())));
+      Bind(&OperationDriver::ReplicationFinished, Unretained(driver.get())));//DHQ: what's this? when is it called?
 
   if (propagated_safe_time) {
     driver->SetPropagatedSafeTime(propagated_safe_time, tablet_->mvcc_manager());
@@ -767,12 +767,12 @@ scoped_refptr<consensus::Consensus> TabletPeer::shared_consensus() const {
   return consensus_;
 }
 
-Result<OperationDriverPtr> TabletPeer::NewLeaderOperationDriver(//DHQ: leader的
+Result<OperationDriverPtr> TabletPeer::NewLeaderOperationDriver(//DHQ: leader
     std::unique_ptr<Operation> operation) {
   return NewOperationDriver(std::move(operation), consensus::LEADER);
 }
 
-Result<OperationDriverPtr> TabletPeer::NewReplicaOperationDriver(//DHQ: follower的
+Result<OperationDriverPtr> TabletPeer::NewReplicaOperationDriver(//DHQ: follower
     std::unique_ptr<Operation> operation) {
   return NewOperationDriver(std::move(operation), consensus::REPLICA);
 }

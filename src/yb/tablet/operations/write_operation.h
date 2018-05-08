@@ -159,7 +159,7 @@ class WriteOperationState : public OperationState {
   // transaction was not initiated by an RPC call.
   tserver::WriteRequestPB* request_;
 
-  tserver::WriteResponsePB* response_;//DHQ: 这个应该是回复，啥时候调用？
+  tserver::WriteResponsePB* response_;
 
   // The QL write operations that return rowblocks that need to be returned as RPC sidecars
   // after the transaction completes.

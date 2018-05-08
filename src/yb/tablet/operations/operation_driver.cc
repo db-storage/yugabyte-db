@@ -207,7 +207,7 @@ Status OperationDriver::PrepareAndStart() {
   // Actually prepare and start the operation.
   prepare_physical_hybrid_time_ = GetMonoTimeMicros();
   if (operation_) {
-    RETURN_NOT_OK(operation_->Prepare());
+    RETURN_NOT_OK(operation_->Prepare());//DHQ: call operation's Prepare
   }
 
   // Only take the lock long enough to take a local copy of the
@@ -224,7 +224,7 @@ Status OperationDriver::PrepareAndStart() {
   if (repl_state_copy != NOT_REPLICATING) {
     // We want to call Start() as soon as possible, because the operation already has the
     // hybrid_time assigned.
-    if (!StartOperation()) {
+    if (!StartOperation()) {//DHQ: call operation's Start
       return Status::OK();
     }
   }
