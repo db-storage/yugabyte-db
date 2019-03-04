@@ -1903,7 +1903,7 @@ Status RaftConsensus::IsLeaderReadyForChangeConfigUnlocked(ChangeConfigType type
   const RaftConfigPB& active_config = state_->GetActiveConfigUnlocked();
   int servers_in_transition = 0;
   if (type == ADD_SERVER) {
-    servers_in_transition = CountServersInTransition(active_config);
+    servers_in_transition = CountServersInTransition(active_config);//DHQ: PRE_VOTER和PRE_OBSERVER的个数
   } else if (type == REMOVE_SERVER) {
     // If we are trying to remove the server in transition, then servers_in_transition shouldn't
     // count it so we can proceed with the operation.
@@ -1917,7 +1917,7 @@ Status RaftConsensus::IsLeaderReadyForChangeConfigUnlocked(ChangeConfigType type
   // 2. Ensure there is no other pending change config.
   // 3. There are no peers that are in the process of becoming VOTERs or OBSERVERs.
   if (!state_->AreCommittedAndCurrentTermsSameUnlocked() ||
-      state_->IsConfigChangePendingUnlocked() ||
+      state_->IsConfigChangePendingUnlocked() ||  //DHQ: check pending Config change inside
       servers_in_transition != 0) {
     return STATUS(IllegalState, Substitute("Leader is not ready for Config Change, can try again. "
                                            "Num peers in transit = $0. Type=$1. Has opid=$2.\n"

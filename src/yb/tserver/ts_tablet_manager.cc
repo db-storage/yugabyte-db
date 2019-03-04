@@ -426,7 +426,7 @@ Status TSTabletManager::Init() {
 
   // Now submit the "Open" task for each.
   for (const scoped_refptr<TabletMetadata>& meta : metas) {
-    scoped_refptr<TransitionInProgressDeleter> deleter;
+    scoped_refptr<TransitionInProgressDeleter> deleter; //DHQ： 在 destuctor里面，从in_progress里面，清除对应tablet
     {
       std::lock_guard<rw_spinlock> lock(lock_);
       CHECK_OK(StartTabletStateTransitionUnlocked(meta->tablet_id(), "opening tablet", &deleter));
@@ -1120,7 +1120,7 @@ int TSTabletManager::GetNumLiveTablets() const {
   }
   return count;
 }
-
+//DHQ: 这种修改，怀疑是为了让Master知道 Conf Change，从而更新路由表
 void TSTabletManager::MarkDirtyUnlocked(const std::string& tablet_id,
                                         std::shared_ptr<consensus::StateChangeContext> context) {
   TabletReportState* state = FindOrNull(dirty_tablets_, tablet_id);

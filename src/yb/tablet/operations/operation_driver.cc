@@ -305,8 +305,8 @@ void OperationDriver::HandleFailure(const Status& s) {
     {
       VLOG_WITH_PREFIX(1) << "Operation " << ToString() << " failed prior to "
           "replication success: " << s.ToString();
-      operation_->Finish(Operation::ABORTED);
-      mutable_state()->completion_callback()->CompleteWithStatus(operation_status_);
+      operation_->Finish(Operation::ABORTED); //先调用operation的finsh
+      mutable_state()->completion_callback()->CompleteWithStatus(operation_status_);//DHQ: 上层给OperationState设置的callback，在这里调用
       operation_tracker_->Release(this);
       return;
     }

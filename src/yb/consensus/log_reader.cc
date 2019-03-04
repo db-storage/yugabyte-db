@@ -152,7 +152,7 @@ Status LogReader::Init(const string& tablet_wal_path) {
   SegmentSequence read_segments;
 
   // build a log segment from each file
-  for (const string &log_file : log_files) {//DHQ: log_files，应该没有保证按照sequence顺序,二十按照字符排序
+  for (const string &log_file : log_files) {//DHQ: log_files，应该没有保证按照sequence顺序,而是按照字符排序
     if (HasPrefixString(log_file, FsManager::kWalFileNamePrefix)) {
       string fqp = JoinPathSegments(tablet_wal_path, log_file);
       scoped_refptr<ReadableLogSegment> segment;
@@ -397,7 +397,7 @@ Status LogReader::ReadReplicatesInRange(
   replicates->swap(replicates_tmp);
   return Status::OK();
 }
-//DHQ: 这个类似于获取term的操作。入口参数时op_index
+//DHQ: 这个类似于获取term的操作。入口参数op_index
 Status LogReader::LookupOpId(int64_t op_index, OpId* op_id) const {
   LogIndexEntry index_entry;//DHQ: 这个是从log_index获取，可能读log index file，但不是读log file, index file已经有term,可以满足OpId
   RETURN_NOT_OK_PREPEND(log_index_->GetEntry(op_index, &index_entry),

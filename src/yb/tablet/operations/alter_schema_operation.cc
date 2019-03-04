@@ -107,7 +107,7 @@ Status AlterSchemaOperation::Prepare() {
   }
 
   Tablet* tablet = state()->tablet();
-  RETURN_NOT_OK(tablet->CreatePreparedAlterSchema(state(), schema.get()));
+  RETURN_NOT_OK(tablet->CreatePreparedAlterSchema(state(), schema.get())); //DHQ: this func gets lock inside, and AlterSchema() need this loc(apply)
 
   state()->AddToAutoReleasePool(schema.release());
 

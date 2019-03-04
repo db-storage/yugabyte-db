@@ -141,7 +141,7 @@ void ConsensusMetadata::clear_pending_config() {
   UpdateActiveRole();
 }
 
-void ConsensusMetadata::set_pending_config(const RaftConfigPB& config) {
+void ConsensusMetadata::set_pending_config(const RaftConfigPB& config) {//DHQ： 不仅仅设置了flag为true，还有个pending_config_
   has_pending_config_ = true;
   pending_config_ = config;
   UpdateActiveRole();

@@ -185,7 +185,7 @@ message ChangeConfigResponsePB {
 message ReplicateMsg {
   // The Raft operation ID (term and index) being replicated.
 
-  required OpIdPB id = 1;
+  required OpIdPB id = 1; //DHQ： 对于split，我们要保留其term和index，并且避免重复apply? bootstrap时，已有这个机制
 
   // The hybrid time assigned to this message.
   required fixed64 hybrid_time = 2;
@@ -203,7 +203,7 @@ message ReplicateMsg {
 
   // The Raft operation ID known to the leader to be committed at the time this message was sent.
   // This is used during tablet bootstrap for RocksDB-backed tables.
-  optional OpIdPB committed_op_id = 8;
+  optional OpIdPB committed_op_id = 8; //DHQ: 这个对于最后一条raft log，是否就不起作用了？
 
   optional NoOpRequestPB noop_request = 999;
 }

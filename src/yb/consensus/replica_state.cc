@@ -332,7 +332,7 @@ Status ReplicaState::SetCommittedConfigUnlocked(const RaftConfigPB& committed_co
   // Pending will not have an opid_index, so ignore that field.
   DCHECK(cmeta_->has_pending_config());
   RaftConfigPB config_no_opid = committed_config;
-  config_no_opid.clear_opid_index();
+  config_no_opid.clear_opid_index(); //DHQ: config_no_opid是为了下面与pending config做比较。当时还没有opid，所以去掉opid比较
   const RaftConfigPB& pending_config = GetPendingConfigUnlocked();
   // Quorums must be exactly equal, even w.r.t. peer ordering.
   CHECK_EQ(GetPendingConfigUnlocked().SerializeAsString(), config_no_opid.SerializeAsString())
@@ -342,7 +342,7 @@ Status ReplicaState::SetCommittedConfigUnlocked(const RaftConfigPB& committed_co
 
   cmeta_->set_committed_config(committed_config);
   cmeta_->clear_pending_config();
-  CHECK_OK(cmeta_->Flush());
+  CHECK_OK(cmeta_->Flush()); //DHQ: flush cmeta with the new committed_config
   return Status::OK();
 }
 
@@ -569,7 +569,7 @@ Status ReplicaState::AddPendingOperation(const scoped_refptr<ConsensusRound>& ro
   }
 
   // Mark pending configuration.
-  if (PREDICT_FALSE(op_type == CHANGE_CONFIG_OP)) {
+  if (PREDICT_FALSE(op_type == CHANGE_CONFIG_OP)) {//DHQ：TODO: split/merge是否也需要这样，不能有多个conf change
     DCHECK(round->replicate_msg()->change_config_record().has_old_config());
     DCHECK(round->replicate_msg()->change_config_record().old_config().has_opid_index());
     DCHECK(round->replicate_msg()->change_config_record().has_new_config());
@@ -580,11 +580,11 @@ Status ReplicaState::AddPendingOperation(const scoped_refptr<ConsensusRound>& ro
       // The leader has to mark the configuration as pending before it gets here
       // because the active configuration affects the replication queue.
       // Do one last sanity check.
-      Status s = CheckNoConfigChangePendingUnlocked();
+      Status s = CheckNoConfigChangePendingUnlocked();//DHQ: 不能有多个pending的
       if (PREDICT_FALSE(!s.ok())) {
         s = s.CloneAndAppend(Substitute("\n  New config: $0", new_config.ShortDebugString()));
         LOG_WITH_PREFIX_UNLOCKED(INFO) << s.ToString();
-        return s;
+        return s; //DHQ： 直接返回 error
       }
       // Check if the pending Raft config has an OpId less than the committed
       // config. If so, this is a replay at startup in which the COMMIT

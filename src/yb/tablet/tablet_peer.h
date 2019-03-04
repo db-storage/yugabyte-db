@@ -356,7 +356,7 @@ class TabletPeer : public RefCountedThreadSafe<TabletPeer>,
   // or leader via the consensus round completion callback of NonTxRoundReplicationFinished.
   // Hence this should be a relatively lightweight function - e.g., update in-memory only state
   // and defer any other heavy duty operations to a thread pool.
-  Callback<void(std::shared_ptr<consensus::StateChangeContext> context)> mark_dirty_clbk_; //DHQ: 这个实际上是TSTabletManager的函数，共TabletPeer调用的
+  Callback<void(std::shared_ptr<consensus::StateChangeContext> context)> mark_dirty_clbk_; //DHQ: 这个实际上是TSTabletManager的函数，供TabletPeer调用的
 
   // List of maintenance operations for the tablet that need information that only the peer
   // can provide.

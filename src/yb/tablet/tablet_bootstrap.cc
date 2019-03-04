@@ -168,7 +168,7 @@ ReplayState::ReplayState(const OpId& last_op_id)
     : last_stored_op_id(last_op_id) {
   // If we know last flushed op id, then initialize committed_op_id with it.
   if (last_op_id.term() > yb::OpId::kUnknownTerm) {
-    committed_op_id = last_op_id;
+    committed_op_id = last_op_id;//DHQ： 初始化，就设置为 committed_op_id 为参数值
   }
 }
 
@@ -279,7 +279,7 @@ Status TabletBootstrap::Bootstrap(shared_ptr<TabletClass>* rebuilt_tablet,
                               "TabletMetadata bootstrap state is " +
                               TabletDataState_Name(tablet_data_state));
   }
-
+  //DHQ: 可以在此获得tablet_data的state，是否为 SplintPending，以及 split_start_log_id
   listener_->StatusMessage("Bootstrap starting.");
 
   if (VLOG_IS_ON(1)) {
@@ -288,7 +288,7 @@ Status TabletBootstrap::Bootstrap(shared_ptr<TabletClass>* rebuilt_tablet,
     VLOG_WITH_PREFIX(1) << "Tablet Metadata: " << super_block.DebugString();
   }
 
-  bool has_blocks = VERIFY_RESULT(OpenTablet());//DHQ: 这里没判断到底apply到哪了，会不会造成不连续的apply?
+  bool has_blocks = VERIFY_RESULT(OpenTablet());//DHQ: 调用的TabletBootstrap::OpenTablet，不是 TSTabletManager::OpenTablet。是这里没判断到底apply到哪了，会不会造成不连续的apply?
 
   bool needs_recovery;
   RETURN_NOT_OK(PrepareRecoveryDir(&needs_recovery));
@@ -299,7 +299,7 @@ Status TabletBootstrap::Bootstrap(shared_ptr<TabletClass>* rebuilt_tablet,
   // This is a new tablet, nothing left to do.
   if (!has_blocks && !needs_recovery) {
     LOG_WITH_PREFIX(INFO) << "No blocks or log segments found. Creating new log.";
-    RETURN_NOT_OK_PREPEND(OpenNewLog(), "Failed to open new log");
+    RETURN_NOT_OK_PREPEND(OpenNewLog(), "Failed to open new log"); //DHQ: 如果是SplintPending，调用获取log并获取和写入split_start_log_id，并设置need_recovery为true
     RETURN_NOT_OK(FinishBootstrap("No bootstrap required, opened a new log",
                                   rebuilt_log,
                                   rebuilt_tablet));
@@ -355,7 +355,7 @@ Result<bool> TabletBootstrap::OpenTablet() {//DHQ: 返回值表示是否有数�
   tablet_ = std::move(tablet);
   return has_ss_tables.get();
 }
-
+//DHQ: 感觉这个是为了帮我们知道，实际上在Recovery过程中宕机了。
 Status TabletBootstrap::PrepareRecoveryDir(bool* needs_recovery) {
   *needs_recovery = false;
 
@@ -389,7 +389,7 @@ Status TabletBootstrap::PrepareRecoveryDir(bool* needs_recovery) {
     *needs_recovery = true;
     return Status::OK();
   }
-
+  //DHQ: recovery期间，将log_dir，rename成 recovery_dir。那么log_dir又干啥呢？ 
   // If we made it here, there was no pre-existing recovery dir.  Now we look for log files in
   // log_dir, and if we find any then we rename the whole log_dir to a recovery dir and return
   // needs_recovery = true.
@@ -554,7 +554,7 @@ Status TabletBootstrap::HandleReplicateMessage(ReplayState* state,
   // Append the replicate message to the log as is
   RETURN_NOT_OK(log_->Append(replicate_entry_ptr->get()));
 
-  if (op_id.index() <= state->last_stored_op_id.index()) {
+  if (op_id.index() <= state->last_stored_op_id.index()) {//DHQ: 小于已经 apply的 id 的 log
     // Do not update the bootstrap in-memory state for log records that have already been applied to
     // RocksDB, or were overwritten by a later entry with a higher term that has already been
     // applied to RocksDB.
@@ -671,18 +671,18 @@ void TabletBootstrap::DumpReplayStateToLog(const ReplayState& state) {
 
 Status TabletBootstrap::PlaySegments(ConsensusBootstrapInfo* consensus_info) {
   auto persistent_op_id = MinimumOpId();
-  Result<yb::OpId> flushed_op_id = tablet_->MaxPersistentOpId();
+  Result<yb::OpId> flushed_op_id = tablet_->MaxPersistentOpId();//DHQ： 这个应该是从rocksdb获取的
   RETURN_NOT_OK(flushed_op_id);
 
   persistent_op_id.set_term(flushed_op_id.get_ptr()->term);
   persistent_op_id.set_index(flushed_op_id.get_ptr()->index);
-  ReplayState state(persistent_op_id);
+  ReplayState state(persistent_op_id);//DHQ: 已经持久化的
 
   LOG_WITH_PREFIX(INFO) << "Max persistent index in RocksDB's SSTables before bootstrap: "
                         << state.last_stored_op_id.ShortDebugString();
 
   log::SegmentSequence segments;
-  RETURN_NOT_OK(log_reader_->GetSegmentsSnapshot(&segments));
+  RETURN_NOT_OK(log_reader_->GetSegmentsSnapshot(&segments));//DHQ: 这个不是文件快照，只是记录开始结束点
 
   // We defer opening the log until here, so that we properly reproduce the point-in-time schema
   // from the log we're reading into the log we're writing.
@@ -801,7 +801,7 @@ Status TabletBootstrap::PlayChangeConfigRequest(ReplicateMsg* replicate_msg) {
   RaftConfigPB config = change_config->new_config();
 
   int64_t cmeta_opid_index =  cmeta_->committed_config().opid_index();
-  if (replicate_msg->id().index() > cmeta_opid_index) {
+  if (replicate_msg->id().index() > cmeta_opid_index) {//DHQ: cmeta已经记录了opid_index，这里会比较和忽略已经apply过的
     DCHECK(!config.has_opid_index());
     config.set_opid_index(replicate_msg->id().index());
     VLOG_WITH_PREFIX(1) << "WAL replay found Raft configuration with log index "

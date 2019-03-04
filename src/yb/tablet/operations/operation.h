@@ -127,7 +127,7 @@ class Operation {
 
   // A private version of this transaction's transaction state so that we can use base
   // OperationState methods on destructors.
-  std::unique_ptr<OperationState> state_;
+  std::unique_ptr<OperationState> state_;//DHQ: OperationState
   const consensus::DriverType type_;
   const OperationType operation_type_;
 };

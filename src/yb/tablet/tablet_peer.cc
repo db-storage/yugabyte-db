@@ -425,6 +425,7 @@ Status TabletPeer::WaitUntilConsensusRunning(const MonoDelta& timeout) {
   return Status::OK();
 }
 //DHQ: WriteOperation在此创建
+//SubmitWrite与Submit的一个重要区别是，它先获取Doc的lock。而其他操作，没有doc，也没法这么加锁了。
 Status TabletPeer::SubmitWrite(std::unique_ptr<WriteOperationState> state) {
   auto operation = std::make_unique<WriteOperation>(std::move(state), consensus::LEADER);
   RETURN_NOT_OK(CheckRunning());
@@ -439,8 +440,8 @@ Status TabletPeer::SubmitWrite(std::unique_ptr<WriteOperationState> state) {
     restart_time->set_local_limit_ht(
         tablet_->SafeTime(RequireLease::kTrue).ToUint64());
     // Global limit is ignored by caller, so we don't set it.
-    operation->state()->completion_callback()->OperationCompleted();
-    return Status::OK();
+    operation->state()->completion_callback()->OperationCompleted();//DHQ: 出错了直接调用设置的callback。正常情况下，由operation driver调用
+    return Status::OK();                                            //DHQ: OperationCompleted是自己定义函数,例如只定义RawPut的Callback
   }
   auto driver = VERIFY_RESULT(NewLeaderOperationDriver(std::move(operation)));
   driver->ExecuteAsync();
@@ -657,6 +658,7 @@ Status TabletPeer::GetGCableDataSize(int64_t* retention_size) const {
   return Status::OK();
 }
 //DHQ: 这个是follower端，根据Msg创建相应的 Operation的函数。Leader端事先知道Operation
+//DHQ: Consensus Only的(Confchange类)，不需要Operation，直接在 StartReplicaOperationUnlocked 里面判断 IsConsensusOnlyOperation
 std::unique_ptr<Operation> TabletPeer::CreateOperation(consensus::ReplicateMsg* replicate_msg) {
   switch (replicate_msg->op_type()) {
     case consensus::WRITE_OP:
